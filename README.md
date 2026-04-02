@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# EEDIF - InspecApp
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicacion web para inspeccion tecnica de edificios (SOCOTEC), desarrollada con React + TypeScript + Vite.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- TypeScript
+- Vite 7
+- Zustand
+- Tailwind CSS 4
+- Dexie (IndexedDB)
+- Konva (croquis y marcado)
+- jsPDF / XLSX / ZIP (exportaciones)
+- PWA (vite-plugin-pwa)
 
-## React Compiler
+## Requisitos
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 20+ recomendado
+- npm 10+
 
-## Expanding the ESLint configuration
+## Desarrollo local
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Servidor local por defecto:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+http://localhost:5173
 ```
+
+## Build de produccion
+
+```bash
+npm run build
+```
+
+Salida de build:
+
+```text
+dist/
+```
+
+## Preview local de produccion
+
+```bash
+npm run preview
+```
+
+## Despliegue en Vercel
+
+### Opcion A: desde dashboard (recomendada)
+
+1. Importa el repositorio `dddavidsm/EEDIF` en Vercel.
+2. Configura:
+   - Framework Preset: `Vite`
+   - Root Directory: `.`
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+3. Deploy.
+
+### Opcion B: con Vercel CLI
+
+```bash
+npm i -g vercel
+vercel
+vercel --prod
+```
+
+## Notas de CI/CD
+
+- El proyecto esta en la raiz del repo (no en subcarpeta).
+- La carpeta `.vite` se ignora en git.
+- Si Vercel falla por cache, usar `Redeploy without cache`.
+
+## Scripts disponibles
+
+- `npm run dev` -> desarrollo
+- `npm run build` -> build produccion
+- `npm run preview` -> preview build
+- `npm run lint` -> lint
