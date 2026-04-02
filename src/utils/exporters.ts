@@ -3,475 +3,577 @@ import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
 import { exportProjectData } from '@/db/db'
-import { LESION_TYPES, SITUATIONS, ORIENTATIONS, URGENCY_LEVELS } from '@/types'
+import {
+  LESION_TYPES,
+  ORIENTATIONS,
+  SITUATIONS,
+  URGENCY_LEVELS,
+} from '@/types'
+import type { CanvasElement, Lesion, Project, Zone } from '@/types'
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function safeName(s: string): string {
-  return s.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s_-]/g, '_').trim()
+interface ExportOptions {
+  onProgress?: (message: string) => void
 }
 
-function typeName(code: string): string {
+function safeName(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9\s_-]/g, '_')
+    .trim()
+    .replace(/\s+/g, '_')
+}
+
+function tipoNombre(code: string): string {
   return LESION_TYPES.find(t => t.code === code)?.name ?? code
 }
-function typeColor(code: string): string {
-  return LESION_TYPES.find(t => t.code === code)?.color ?? '#888'
-}
-function sitName(code: string): string {
-  return SITUATIONS.find(s => s.code === code)?.name ?? code
-}
-function oriName(code: string | null): string {
-  if (!code) return '—'
-  return ORIENTATIONS.find(o => o.code === code)?.name ?? code
-}
-function urgName(code: string): string {
-  return URGENCY_LEVELS.find(u => u.code === code)?.name ?? code
-}
-function urgColor(code: string): string {
-  return URGENCY_LEVELS.find(u => u.code === code)?.color ?? '#888'
+
+function tipoColor(code: string): string {
+  return LESION_TYPES.find(t => t.code === code)?.color ?? '#64748B'
 }
 
-/** Hex color (#RRGGBB) → [r, g, b] */
+function situacionNombre(code: string): string {
+  return SITUATIONS.find(s => s.code === code)?.name ?? code
+}
+
+function orientacionNombre(code: string | null): string {
+  if (!code) return 'No aplica'
+  return ORIENTATIONS.find(o => o.code === code)?.name ?? code
+}
+
+function urgenciaNombre(code: string): string {
+  return URGENCY_LEVELS.find(u => u.code === code)?.name ?? code
+}
+
+function urgenciaColor(code: string): string {
+  return URGENCY_LEVELS.find(u => u.code === code)?.color ?? '#64748B'
+}
+
 function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
+  const raw = hex.replace('#', '')
+  const r = Number.parseInt(raw.slice(0, 2), 16)
+  const g = Number.parseInt(raw.slice(2, 4), 16)
+  const b = Number.parseInt(raw.slice(4, 6), 16)
   return [r, g, b]
 }
 
-// ─── XLSX Export ────────────────────────────────────────────────────────────
+function mimeToExtension(mimeType: string): string {
+  if (mimeType.includes('png')) return 'png'
+  if (mimeType.includes('webp')) return 'webp'
+  return 'jpg'
+}
+
+async function cargarImagen(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('No se pudo cargar la imagen'))
+    image.src = src
+  })
+}
+
+function formatDate(dateIso: string): string {
+  if (!dateIso) return 'Sin fecha'
+  const date = new Date(dateIso)
+  if (Number.isNaN(date.getTime())) return dateIso
+  return new Intl.DateTimeFormat('es-ES').format(date)
+}
+
+async function renderCroquisZona(
+  zone: Zone,
+  elements: CanvasElement[],
+  lesions: Lesion[],
+): Promise<string> {
+  const width = 1600
+  const height = 980
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  ctx.fillStyle = '#F4F8FF'
+  ctx.fillRect(0, 0, width, height)
+
+  if (zone.backgroundImage) {
+    try {
+      const image = await cargarImagen(zone.backgroundImage)
+      ctx.save()
+      ctx.globalAlpha = 0.34
+      ctx.drawImage(image, 0, 0, width, height)
+      ctx.restore()
+    } catch {
+      // Se continua sin imagen de fondo
+    }
+  }
+
+  ctx.strokeStyle = 'rgba(37, 99, 235, 0.13)'
+  ctx.lineWidth = 1
+  for (let x = 0; x <= width; x += 50) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, height)
+    ctx.stroke()
+  }
+  for (let y = 0; y <= height; y += 50) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(width, y)
+    ctx.stroke()
+  }
+
+  for (const element of elements) {
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.13)'
+    ctx.strokeStyle = 'rgba(30, 64, 175, 0.85)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.roundRect(element.x, element.y, element.w, element.h, 8)
+    ctx.fill()
+    ctx.stroke()
+
+    if (element.label) {
+      ctx.fillStyle = '#1E3A5F'
+      ctx.font = '600 26px Inter, sans-serif'
+      ctx.fillText(element.label, element.x + 14, element.y + 34)
+    }
+  }
+
+  for (const lesion of lesions) {
+    const color = tipoColor(lesion.tipus)
+
+    ctx.fillStyle = `${color}2E`
+    ctx.beginPath()
+    ctx.arc(lesion.x, lesion.y, 30, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.fillStyle = '#FFFFFF'
+    ctx.strokeStyle = color
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.arc(lesion.x, lesion.y, 19, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+
+    ctx.fillStyle = color
+    ctx.font = '700 18px IBM Plex Mono, monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(lesion.code, lesion.x, lesion.y + 6)
+    ctx.textAlign = 'start'
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.92)
+}
 
 export async function exportXLSX(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
-  const p = data.project
-  const wb = XLSX.utils.book_new()
+  const workbook = XLSX.utils.book_new()
 
-  // Sheet 1: Resumen
-  const summary = [
-    ['Codigo Obra', 'Proyecto', 'Direccion', 'Inspector', 'Fecha'],
-    [p.workCode, p.name, p.address, p.inspector, p.inspectionDate],
+  const resumen = [
+    ['Codigo obra', 'Proyecto', 'Direccion', 'Inspector', 'Fecha'],
+    [
+      data.project.workCode,
+      data.project.name,
+      data.project.address,
+      data.project.inspector,
+      data.project.inspectionDate,
+    ],
   ]
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Resumen')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(resumen), 'Resumen')
 
-  // Sheet 2: All lesions
-  const hdr = [
-    'Codigo', 'Tipo', 'Nombre Tipo', 'Zona', 'Planta', 'Piso',
-    'Situacion', 'Orientacion', 'Urgencia', 'Fotos', 'Observaciones',
+  const cabecera = [
+    'Codigo',
+    'Tipo',
+    'Zona',
+    'Planta',
+    'Unidad',
+    'Situacion',
+    'Orientacion',
+    'Urgencia',
+    'Fotos',
+    'Observaciones',
   ]
-  const rows = data.zones.flatMap(z =>
+  const rows = data.zones.flatMap(zone =>
     data.lesions
-      .filter(l => l.zoneId === z.id)
-      .map(l => [
-        l.code, l.tipus, typeName(l.tipus), z.name, z.floor, z.unit,
-        sitName(l.sit), oriName(l.ori), urgName(l.urgency),
-        l.photoIds.length, l.obs,
+      .filter(lesion => lesion.zoneId === zone.id)
+      .map(lesion => [
+        lesion.code,
+        tipoNombre(lesion.tipus),
+        zone.name,
+        zone.floor || '—',
+        zone.unit || '—',
+        situacionNombre(lesion.sit),
+        orientacionNombre(lesion.ori),
+        urgenciaNombre(lesion.urgency),
+        lesion.photoIds.length,
+        lesion.obs,
       ]),
   )
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hdr, ...rows]), 'Lesiones')
 
-  // Sheet per zone
-  data.zones.forEach(z => {
-    const zLesions = data.lesions.filter(l => l.zoneId === z.id)
-    if (zLesions.length === 0) return
-    const zRows = zLesions.map(l => [
-      l.code, l.tipus, typeName(l.tipus), sitName(l.sit),
-      oriName(l.ori), urgName(l.urgency), l.photoIds.length, l.obs,
-    ])
-    const zHdr = ['Codigo', 'Tipo', 'Nombre', 'Situacion', 'Orientacion', 'Urgencia', 'Fotos', 'Observaciones']
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([zHdr, ...zRows]), z.name.slice(0, 28))
-  })
-
-  XLSX.writeFile(wb, `${safeName(p.name)}_${p.workCode || 'export'}.xlsx`)
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([cabecera, ...rows]), 'Lesiones')
+  XLSX.writeFile(workbook, `${safeName(data.project.name)}_${data.project.workCode || 'exportacion'}.xlsx`)
 }
-
-// ─── CSV Export ─────────────────────────────────────────────────────────────
 
 export async function exportCSV(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
-  const hdr = ['Zona', 'Planta', 'Piso', 'Codigo', 'Tipo', 'Situacion', 'Orientacion', 'Urgencia', 'Fotos', 'Observaciones']
-  const rows = data.zones.flatMap(z =>
+  const cabecera = [
+    'Zona',
+    'Planta',
+    'Unidad',
+    'Codigo',
+    'Tipo',
+    'Situacion',
+    'Orientacion',
+    'Urgencia',
+    'Fotos',
+    'Observaciones',
+  ]
+  const rows = data.zones.flatMap(zone =>
     data.lesions
-      .filter(l => l.zoneId === z.id)
-      .map(l => [
-        z.name, z.floor, z.unit, l.code, typeName(l.tipus),
-        sitName(l.sit), oriName(l.ori), urgName(l.urgency),
-        String(l.photoIds.length), l.obs,
+      .filter(lesion => lesion.zoneId === zone.id)
+      .map(lesion => [
+        zone.name,
+        zone.floor,
+        zone.unit,
+        lesion.code,
+        tipoNombre(lesion.tipus),
+        situacionNombre(lesion.sit),
+        orientacionNombre(lesion.ori),
+        urgenciaNombre(lesion.urgency),
+        String(lesion.photoIds.length),
+        lesion.obs,
       ]),
   )
 
-  const escape = (s: string) => `"${s.replace(/"/g, '""')}"`
-  const csv = [hdr, ...rows].map(r => r.map(escape).join(',')).join('\n')
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-  saveAs(blob, `${safeName(data.project.name)}_${data.project.workCode || 'export'}.csv`)
-}
+  const csv = [cabecera, ...rows]
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+    .join('\n')
 
-// ─── JSON Export ────────────────────────────────────────────────────────────
+  saveAs(
+    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
+    `${safeName(data.project.name)}_${data.project.workCode || 'exportacion'}.csv`,
+  )
+}
 
 export async function exportJSON(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
-  const exportData = {
+  const payload = {
     ...data,
-    photos: data.photos.map(p => ({ ...p, dataUrl: '[OMITTED — use ZIP export for photos]' })),
+    photos: data.photos.map(photo => ({ ...photo, dataUrl: '[Incluido en ZIP]' })),
   }
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-  saveAs(blob, `inspecapp_${data.project.workCode || data.project.id}.json`)
+
+  saveAs(
+    new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+    `inspecapp_${data.project.workCode || data.project.id}.json`,
+  )
 }
 
-// ─── PDF Report ─────────────────────────────────────────────────────────────
-// Genera portada + listado + UNA FICHA POR LESIÓN con foto si la hay
+function drawHeader(doc: jsPDF, title: string, subtitle?: string): void {
+  const width = doc.internal.pageSize.getWidth()
 
-export async function exportPDF(projectId: string): Promise<void> {
+  doc.setFillColor(13, 45, 93)
+  doc.rect(0, 0, width, 20, 'F')
+
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(13)
+  doc.text('SOCOTEC ENGINEERING', 12, 8)
+  doc.setFontSize(8.5)
+  doc.text('InspecApp · Informe Tecnico de Inspeccion', 12, 14)
+
+  doc.setFontSize(12)
+  doc.text(title, width - 12, 12.5, { align: 'right' })
+
+  if (subtitle) {
+    doc.setTextColor(82, 101, 130)
+    doc.setFontSize(9)
+    doc.text(subtitle, 12, 27)
+  }
+}
+
+function drawFooter(doc: jsPDF, project: Project, page: number): void {
+  const width = doc.internal.pageSize.getWidth()
+  const height = doc.internal.pageSize.getHeight()
+
+  doc.setDrawColor(219, 230, 245)
+  doc.line(12, height - 12, width - 12, height - 12)
+
+  doc.setTextColor(99, 119, 150)
+  doc.setFontSize(8)
+  doc.text(`${project.name} · ${project.workCode || 'Sin codigo'}`, 12, height - 7)
+  doc.text(`Pagina ${page}`, width - 12, height - 7, { align: 'right' })
+}
+
+export async function exportPDF(projectId: string, options?: ExportOptions): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
-  const p = data.project
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const onProgress = options?.onProgress ?? (() => undefined)
+  onProgress('Preparando datos del informe corporativo...')
 
-  const W = doc.internal.pageSize.getWidth()   // 210
-  const H = doc.internal.pageSize.getHeight()  // 297
+  const project = data.project
+  const zones = [...data.zones].sort((a, b) => a.order - b.order)
 
-  // ── Palette (dark, matching the app) ──
-  const BG: [number, number, number]   = [9, 11, 17]
-  const S1: [number, number, number]   = [15, 21, 32]
-  const S2: [number, number, number]   = [21, 30, 46]
-  const BD: [number, number, number]   = [31, 48, 80]
-  const ACC: [number, number, number]  = [37, 99, 235]
-  const TX: [number, number, number]   = [221, 225, 236]
-  const T2: [number, number, number]   = [123, 144, 181]
-  const T3: [number, number, number]   = [63, 80, 112]
+  const lesionsByZone = new Map<string, Lesion[]>()
+  const elementsByZone = new Map<string, CanvasElement[]>()
+  const photosByLesion = new Map<string, typeof data.photos>()
 
-  const fillBg = () => { doc.setFillColor(...BG); doc.rect(0, 0, W, H, 'F') }
-
-  // ── Helper: add header stripe on every page ──
-  const addPageHeader = (title: string) => {
-    doc.setFillColor(...ACC)
-    doc.rect(0, 0, W, 8, 'F')
-    doc.setTextColor(...TX)
-    doc.setFontSize(7.5)
-    doc.text('SOCOTEC InspecApp', 7, 5.5)
-    doc.text(title, W - 7, 5.5, { align: 'right' })
-  }
-
-  // ── PORTADA ──────────────────────────────────────────────────
-
-  fillBg()
-  addPageHeader('Informe de Inspeccion')
-
-  // Big brand bar
-  doc.setFillColor(...ACC)
-  doc.rect(0, 20, 6, 60, 'F')
-
-  doc.setTextColor(...TX)
-  doc.setFontSize(22)
-  doc.text('Informe de Inspeccion', 14, 42)
-
-  doc.setFontSize(14)
-  doc.setTextColor(...T2)
-  doc.text(p.name, 14, 54)
-
-  // Info grid
-  doc.setFillColor(...S1)
-  doc.rect(14, 65, W - 28, 52, 'F')
-  doc.setDrawColor(...BD)
-  doc.setLineWidth(0.3)
-  doc.rect(14, 65, W - 28, 52)
-
-  const infoItems = [
-    ['Codigo de obra', p.workCode],
-    ['Direccion', p.address],
-    ['Inspector', p.inspector],
-    ['Fecha de inspeccion', p.inspectionDate],
-    ['Zonas inspeccionadas', String(data.zones.length)],
-    ['Total de lesiones', String(data.lesions.length)],
-    ['Lesiones urgentes', String(data.lesions.filter(l => l.urgency === 'U').length)],
-    ['Fotografias adjuntas', String(data.photos.length)],
-  ]
-  infoItems.forEach(([label, value], i) => {
-    const row = Math.floor(i / 2)
-    const col = i % 2
-    const x = 20 + col * (W / 2 - 14)
-    const y = 74 + row * 10
-    doc.setFontSize(8)
-    doc.setTextColor(...T3)
-    doc.text(label, x, y)
-    doc.setFontSize(9.5)
-    doc.setTextColor(...TX)
-    doc.text(value || '—', x, y + 5)
+  zones.forEach(zone => {
+    lesionsByZone.set(zone.id, data.lesions.filter(lesion => lesion.zoneId === zone.id))
+    elementsByZone.set(zone.id, data.elements.filter(element => element.zoneId === zone.id))
+  })
+  data.lesions.forEach(lesion => {
+    photosByLesion.set(lesion.id, data.photos.filter(photo => photo.lesionId === lesion.id))
   })
 
-  // Building description
-  if (p.description) {
-    doc.setFillColor(...S2)
-    doc.rect(14, 125, W - 28, 35, 'F')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...T3)
-    doc.text('DESCRIPCION DEL EDIFICIO', 18, 133)
-    doc.setFontSize(9)
-    doc.setTextColor(...T2)
-    const lines = doc.splitTextToSize(p.description, W - 36)
-    doc.text(lines.slice(0, 3), 18, 140)
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  let page = 1
+
+  drawHeader(doc, 'Portada del proyecto')
+  doc.setTextColor(15, 35, 64)
+  doc.setFontSize(24)
+  doc.text(project.name, 14, 45)
+
+  doc.setDrawColor(31, 76, 145)
+  doc.setLineWidth(1.1)
+  doc.line(14, 49, pageWidth - 14, 49)
+
+  doc.setFontSize(10)
+  doc.setTextColor(63, 88, 124)
+  const portadaRows = [
+    ['Codigo de obra', project.workCode || 'Sin codigo'],
+    ['Direccion', project.address || 'Sin direccion'],
+    ['Inspector', project.inspector || 'Sin asignar'],
+    ['Fecha de inspeccion', formatDate(project.inspectionDate)],
+    ['Zonas analizadas', String(zones.length)],
+    ['Lesiones registradas', String(data.lesions.length)],
+  ]
+
+  portadaRows.forEach((row, index) => {
+    const y = 62 + index * 12
+    doc.setFillColor(240, 245, 253)
+    doc.roundedRect(14, y - 5.5, pageWidth - 28, 9, 1.2, 1.2, 'F')
+    doc.setTextColor(79, 99, 129)
+    doc.text(row[0], 18, y)
+    doc.setTextColor(15, 35, 64)
+    doc.text(row[1], pageWidth - 18, y, { align: 'right' })
+  })
+
+  if (project.description) {
+    doc.setTextColor(79, 99, 129)
+    doc.setFontSize(10)
+    doc.text('Descripcion del edificio', 14, 145)
+    doc.setTextColor(15, 35, 64)
+    doc.setFontSize(9.5)
+    const descLines = doc.splitTextToSize(project.description, pageWidth - 28)
+    doc.text(descLines, 14, 151)
   }
 
-  // Footer
-  doc.setFontSize(7)
-  doc.setTextColor(...T3)
-  doc.text(`Generado ${new Date().toLocaleDateString('es-ES')} — SOCOTEC InspecApp`, W / 2, H - 10, { align: 'center' })
+  drawFooter(doc, project, page)
 
-  // ── RESUMEN POR ZONA ─────────────────────────────────────────
+  onProgress('Generando resumen estadistico de urgencias...')
+  doc.addPage()
+  page += 1
+  drawHeader(doc, 'Resumen estadistico', 'Distribucion de lesiones por nivel de urgencia')
 
-  if (data.zones.length > 0) {
-    doc.addPage()
-    fillBg()
-    addPageHeader('Resumen por zona')
-
-    doc.setTextColor(...TX)
-    doc.setFontSize(14)
-    doc.text('Resumen por zona', 14, 22)
-
-    let y = 32
-    data.zones.forEach(z => {
-      const zLesions = data.lesions.filter(l => l.zoneId === z.id)
-      const urgZ = zLesions.filter(l => l.urgency === 'U').length
-
-      if (y > H - 30) {
-        doc.addPage(); fillBg(); addPageHeader('Resumen por zona')
-        y = 20
-      }
-
-      // Zone header
-      doc.setFillColor(...S1)
-      doc.rect(14, y, W - 28, 10, 'F')
-      doc.setFontSize(9)
-      doc.setTextColor(...TX)
-      doc.text(z.name, 18, y + 6.5)
-      doc.setFontSize(8)
-      doc.setTextColor(...T2)
-      doc.text(`${zLesions.length} lesiones`, W - 18, y + 6.5, { align: 'right' })
-      y += 12
-
-      if (urgZ > 0) {
-        doc.setFontSize(7.5)
-        doc.setTextColor(239, 68, 68)
-        doc.text(`${urgZ} urgentes`, 18, y)
-        y += 5
-      }
-
-      // Lesion mini-rows
-      zLesions.forEach(l => {
-        if (y > H - 12) {
-          doc.addPage(); fillBg(); addPageHeader('Resumen por zona')
-          y = 20
-        }
-        const uc = urgColor(l.urgency)
-        const tc = typeColor(l.tipus)
-        const [tr, tg, tb] = hexToRgb(tc)
-        doc.setFillColor(tr, tg, tb, 0.15 as number)
-        doc.rect(18, y - 2, 3, 3, 'F')
-        doc.setFontSize(7.5)
-        doc.setTextColor(...TX)
-        doc.text(l.code, 24, y + 0.5)
-        doc.setTextColor(...T2)
-        const obs = (l.obs || typeName(l.tipus)).slice(0, 65)
-        doc.text(obs, 45, y + 0.5)
-        const [ur, ug, ub] = hexToRgb(uc)
-        doc.setTextColor(ur, ug, ub)
-        doc.text(urgName(l.urgency), W - 18, y + 0.5, { align: 'right' })
-        y += 6
-      })
-      y += 4
-    })
-  }
-
-  // ── FICHAS POR LESIÓN ────────────────────────────────────────
-  // Una página A4 por lesión con todos los datos + foto si existe
-
-  for (const z of data.zones) {
-    const zLesions = data.lesions.filter(l => l.zoneId === z.id)
-
-    for (const l of zLesions) {
-      doc.addPage()
-      fillBg()
-      addPageHeader(`Ficha de lesion · ${l.code}`)
-
-      const tc = typeColor(l.tipus)
-      const uc = urgColor(l.urgency)
-      const [tcR, tcG, tcB] = hexToRgb(tc)
-      const [ucR, ucG, ucB] = hexToRgb(uc)
-
-      // ─ Franja de color del tipo en la izquierda ─
-      doc.setFillColor(tcR, tcG, tcB)
-      doc.rect(0, 8, 5, H - 8, 'F')
-
-      // ─ Cabecera de la ficha ─
-      doc.setFillColor(...S1)
-      doc.rect(8, 12, W - 16, 24, 'F')
-      doc.setDrawColor(tcR, tcG, tcB)
-      doc.setLineWidth(0.4)
-      doc.rect(8, 12, W - 16, 24)
-
-      doc.setFontSize(20)
-      doc.setTextColor(tcR, tcG, tcB)
-      doc.text(l.code, 14, 26)
-
-      doc.setFontSize(10)
-      doc.setTextColor(...T2)
-      doc.text(typeName(l.tipus), 14, 32)
-
-      // Urgency badge
-      doc.setFillColor(ucR, ucG, ucB)
-      doc.roundedRect(W - 45, 15, 35, 8, 1.5, 1.5, 'F')
-      doc.setFontSize(8)
-      doc.setTextColor(255, 255, 255)
-      doc.text(urgName(l.urgency).toUpperCase(), W - 27.5, 20.5, { align: 'center' })
-
-      // ─ Grid de datos ─
-      const dataItems = [
-        ['Zona', z.name],
-        ['Planta', z.floor || '—'],
-        ['Piso / Unidad', z.unit || '—'],
-        ['Situacion', sitName(l.sit)],
-        ['Orientacion', oriName(l.ori)],
-        ['Tipo', typeName(l.tipus)],
-        ['Codigo', l.code],
-        ['Fotos adjuntas', String(l.photoIds.length)],
-      ]
-
-      // Two-column grid
-      const gridTop = 44
-      const cellW = (W - 16) / 2 - 2
-      const cellH = 13
-
-      dataItems.forEach((item, i) => {
-        const col = i % 2
-        const row = Math.floor(i / 2)
-        const x = 8 + col * (cellW + 4)
-        const y = gridTop + row * (cellH + 2)
-
-        doc.setFillColor(...S2)
-        doc.rect(x, y, cellW, cellH, 'F')
-        doc.setDrawColor(...BD)
-        doc.setLineWidth(0.2)
-        doc.rect(x, y, cellW, cellH)
-
-        doc.setFontSize(6.5)
-        doc.setTextColor(...T3)
-        doc.text(item[0].toUpperCase(), x + 3, y + 4.5)
-        doc.setFontSize(9)
-        doc.setTextColor(...TX)
-        doc.text(item[1], x + 3, y + 10)
-      })
-
-      // ─ Observaciones ─
-      const obsTop = gridTop + 4 * (cellH + 2) + 4
-
-      doc.setFillColor(...S1)
-      const obsLines = doc.splitTextToSize(l.obs || 'Sin observaciones registradas.', W - 28)
-      const obsH = Math.max(20, obsLines.length * 5 + 12)
-      doc.rect(8, obsTop, W - 16, obsH, 'F')
-      doc.setDrawColor(...BD)
-      doc.setLineWidth(0.2)
-      doc.rect(8, obsTop, W - 16, obsH)
-
-      doc.setFontSize(7)
-      doc.setTextColor(...T3)
-      doc.text('OBSERVACIONES', 12, obsTop + 6)
-      doc.setFontSize(9.5)
-      doc.setTextColor(...T2)
-      doc.text(obsLines, 12, obsTop + 12)
-
-      // ─ Foto adjunta (si existe) ─
-      const photoTop = obsTop + obsH + 6
-      const lesionPhotos = data.photos.filter(ph => ph.lesionId === l.id)
-
-      if (lesionPhotos.length > 0) {
-        doc.setFontSize(7)
-        doc.setTextColor(...T3)
-        doc.text('FOTOGRAFIAS ADJUNTAS', 12, photoTop)
-
-        let photoX = 8
-        const photoY = photoTop + 3
-        const maxPhotoW = (W - 16 - (Math.min(lesionPhotos.length, 3) - 1) * 3) / Math.min(lesionPhotos.length, 3)
-        const maxPhotoH = Math.min(H - photoY - 16, 70)
-
-        for (const ph of lesionPhotos.slice(0, 3)) {
-          try {
-            // dataUrl is "data:image/jpeg;base64,..."
-            const match = ph.dataUrl.match(/^data:([^;]+);base64,(.+)$/)
-            if (match) {
-              const format = match[1].split('/')[1]?.toUpperCase() ?? 'JPEG'
-              const supportedFormats = ['JPEG', 'JPG', 'PNG', 'WEBP']
-              const safeFormat = supportedFormats.includes(format) ? format : 'JPEG'
-              doc.addImage(ph.dataUrl, safeFormat as 'JPEG' | 'PNG', photoX, photoY, maxPhotoW, maxPhotoH, undefined, 'MEDIUM')
-            }
-          } catch {
-            // Skip photo if it can't be embedded
-          }
-          photoX += maxPhotoW + 3
-        }
-      }
-
-      // ─ Footer de ficha ─
-      doc.setFontSize(6.5)
-      doc.setTextColor(...T3)
-      doc.text(
-        `${p.name} · ${p.workCode}  |  ${z.name}  |  Ficha ${l.code}`,
-        W / 2, H - 8, { align: 'center' },
-      )
+  const urgencyStats = URGENCY_LEVELS.map(level => {
+    const total = data.lesions.filter(lesion => lesion.urgency === level.code).length
+    return {
+      ...level,
+      total,
+      ratio: data.lesions.length > 0 ? Math.round((total / data.lesions.length) * 100) : 0,
     }
+  })
+
+  let yStats = 42
+  urgencyStats.forEach(stat => {
+    const [r, g, b] = hexToRgb(stat.color)
+    doc.setFillColor(245, 248, 253)
+    doc.roundedRect(14, yStats - 6, pageWidth - 28, 16, 2, 2, 'F')
+
+    doc.setFillColor(r, g, b)
+    doc.roundedRect(18, yStats - 2, 5, 5, 1.4, 1.4, 'F')
+
+    doc.setTextColor(15, 35, 64)
+    doc.setFontSize(11)
+    doc.text(stat.name, 27, yStats + 1.5)
+    doc.setFontSize(10)
+    doc.setTextColor(82, 101, 130)
+    doc.text(`${stat.total} lesiones · ${stat.ratio}%`, pageWidth - 18, yStats + 1.5, { align: 'right' })
+
+    yStats += 22
+  })
+
+  drawFooter(doc, project, page)
+
+  for (const zone of zones) {
+    onProgress(`Generando bloque de zona: ${zone.name}...`)
+
+    doc.addPage()
+    page += 1
+    drawHeader(doc, `Zona: ${zone.name}`, 'Croquis y fichas tecnicas de lesiones por zona')
+
+    const zoneLesions = lesionsByZone.get(zone.id) ?? []
+    const zoneElements = elementsByZone.get(zone.id) ?? []
+
+    doc.setFillColor(239, 245, 254)
+    doc.roundedRect(14, 35, pageWidth - 28, 18, 2, 2, 'F')
+    doc.setTextColor(15, 35, 64)
+    doc.setFontSize(10)
+    doc.text(`Planta: ${zone.floor || 'No indicada'}`, 18, 43)
+    doc.text(`Unidad: ${zone.unit || 'No indicada'}`, 18, 49)
+    doc.text(`Lesiones en zona: ${zoneLesions.length}`, pageWidth - 18, 46, { align: 'right' })
+
+    const croquisDataUrl = await renderCroquisZona(zone, zoneElements, zoneLesions)
+    if (croquisDataUrl) {
+      doc.setTextColor(79, 99, 129)
+      doc.setFontSize(9)
+      doc.text('Croquis de la zona', 14, 62)
+      doc.addImage(croquisDataUrl, 'JPEG', 14, 64, pageWidth - 28, 78, undefined, 'FAST')
+    }
+
+    let yLesion = 150
+    for (const lesion of zoneLesions) {
+      if (yLesion > pageHeight - 40) {
+        drawFooter(doc, project, page)
+        doc.addPage()
+        page += 1
+        drawHeader(doc, `Zona: ${zone.name}`, 'Continuacion de fichas de lesion')
+        yLesion = 34
+      }
+
+      const color = tipoColor(lesion.tipus)
+      const [r, g, b] = hexToRgb(color)
+      const urgentColor = urgenciaColor(lesion.urgency)
+      const [ur, ug, ub] = hexToRgb(urgentColor)
+
+      doc.setFillColor(250, 252, 255)
+      doc.roundedRect(14, yLesion - 5, pageWidth - 28, 26, 2, 2, 'F')
+
+      doc.setFillColor(r, g, b)
+      doc.roundedRect(18, yLesion, 3.4, 3.4, 1, 1, 'F')
+
+      doc.setTextColor(15, 35, 64)
+      doc.setFontSize(10.5)
+      doc.text(`${lesion.code} · ${tipoNombre(lesion.tipus)}`, 24, yLesion + 3)
+
+      doc.setFontSize(9)
+      doc.setTextColor(82, 101, 130)
+      doc.text(`Situacion: ${situacionNombre(lesion.sit)} · Orientacion: ${orientacionNombre(lesion.ori)}`, 24, yLesion + 8.5)
+
+      doc.setTextColor(ur, ug, ub)
+      doc.text(`Urgencia: ${urgenciaNombre(lesion.urgency)}`, pageWidth - 18, yLesion + 3, { align: 'right' })
+
+      doc.setTextColor(79, 99, 129)
+      doc.text(`Fotos: ${lesion.photoIds.length}`, pageWidth - 18, yLesion + 8.5, { align: 'right' })
+
+      const obsText = lesion.obs?.trim() ? lesion.obs : 'Sin observaciones tecnicas registradas.'
+      const obsLines = doc.splitTextToSize(obsText, pageWidth - 36)
+      doc.setFontSize(8.5)
+      doc.setTextColor(63, 88, 124)
+      doc.text(obsLines.slice(0, 2), 24, yLesion + 14)
+
+      yLesion += 30
+    }
+
+    if (zoneLesions.length === 0) {
+      doc.setTextColor(95, 118, 154)
+      doc.setFontSize(10)
+      doc.text('No se han registrado lesiones en esta zona.', 14, 154)
+    }
+
+    drawFooter(doc, project, page)
   }
 
-  doc.save(`${safeName(p.name)}_${p.workCode || 'informe'}.pdf`)
+  onProgress('Generando anexo fotografico...')
+  const lesionesConFotos = data.lesions.filter(lesion => (photosByLesion.get(lesion.id)?.length ?? 0) > 0)
+  if (lesionesConFotos.length > 0) {
+    doc.addPage()
+    page += 1
+    drawHeader(doc, 'Anexo fotografico', 'Registro fotografico vinculado a cada lesion')
+
+    let photoY = 36
+    let photoIndex = 1
+
+    for (const lesion of lesionesConFotos) {
+      const photos = photosByLesion.get(lesion.id) ?? []
+      for (const photo of photos) {
+        if (photoY > pageHeight - 78) {
+          drawFooter(doc, project, page)
+          doc.addPage()
+          page += 1
+          drawHeader(doc, 'Anexo fotografico', 'Continuacion')
+          photoY = 32
+        }
+
+        const format = photo.mimeType.includes('png') ? 'PNG' : 'JPEG'
+        doc.setFillColor(248, 251, 255)
+        doc.roundedRect(14, photoY - 4, pageWidth - 28, 68, 2, 2, 'F')
+        doc.addImage(photo.dataUrl, format, 18, photoY, 70, 52, undefined, 'FAST')
+
+        doc.setTextColor(15, 35, 64)
+        doc.setFontSize(10)
+        doc.text(`Foto ${photoIndex} - ${lesion.code}`, 92, photoY + 6)
+
+        doc.setFontSize(8.5)
+        doc.setTextColor(79, 99, 129)
+        doc.text(`Tipo: ${tipoNombre(lesion.tipus)}`, 92, photoY + 14)
+        doc.text(`Urgencia: ${urgenciaNombre(lesion.urgency)}`, 92, photoY + 20)
+        doc.text(`Capturada: ${formatDate(photo.capturedAt)}`, 92, photoY + 26)
+
+        const obs = lesion.obs?.trim() ? lesion.obs : 'Sin observaciones para esta lesion.'
+        const lines = doc.splitTextToSize(obs, pageWidth - 106)
+        doc.text(lines.slice(0, 5), 92, photoY + 33)
+
+        photoY += 74
+        photoIndex += 1
+      }
+    }
+
+    drawFooter(doc, project, page)
+  }
+
+  onProgress('Finalizando informe PDF corporativo...')
+  doc.save(`${safeName(project.name)}_${project.workCode || 'informe'}_corporativo.pdf`)
 }
 
-// ─── ZIP Export (full project backup) ───────────────────────────────────────
+export async function exportZIP(projectId: string, options?: ExportOptions): Promise<void> {
+  const onProgress = options?.onProgress ?? (() => undefined)
+  onProgress('Preparando backup completo del proyecto...')
 
-export async function exportZIP(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
   const zip = new JSZip()
-  const p = data.project
 
-  // Project JSON (without photo data)
-  const jsonData = {
-    ...data,
-    photos: data.photos.map(ph => ({ ...ph, dataUrl: undefined })),
-  }
-  zip.file('project.json', JSON.stringify(jsonData, null, 2))
+  onProgress('Empaquetando estructura de datos en project_data.json...')
+  zip.file('project_data.json', JSON.stringify(data, null, 2))
 
-  // Photos folder
-  if (data.photos.length > 0) {
-    const photosFolder = zip.folder('fotos')!
-    data.photos.forEach(ph => {
-      const match = ph.dataUrl.match(/^data:([^;]+);base64,(.+)$/)
-      if (match) {
-        const ext = match[1].split('/')[1] || 'jpg'
-        photosFolder.file(`${ph.id}.${ext}`, match[2], { base64: true })
+  onProgress('Copiando fotografias a la carpeta fotos...')
+  const photosFolder = zip.folder('fotos')
+  if (photosFolder) {
+    data.photos.forEach((photo, index) => {
+      const lesion = data.lesions.find(item => item.id === photo.lesionId)
+      const lesionCode = lesion?.code ?? 'SIN-CODIGO'
+      const ext = mimeToExtension(photo.mimeType)
+      const baseName = safeName(photo.filename || `${photo.id}.${ext}`) || `foto_${index + 1}`
+      const finalName = `foto_${String(index + 1).padStart(3, '0')}_${lesionCode}_${baseName}.${ext}`
+
+      const match = photo.dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+      if (match?.[2]) {
+        photosFolder.file(finalName, match[2], { base64: true })
       }
     })
   }
 
-  // XLSX inside ZIP
-  const wb = XLSX.utils.book_new()
-  const hdr = ['Codigo', 'Tipo', 'Zona', 'Planta', 'Piso', 'Situacion', 'Orientacion', 'Urgencia', 'Fotos', 'Observaciones']
-  const rows = data.zones.flatMap(z =>
-    data.lesions.filter(l => l.zoneId === z.id).map(l => [
-      l.code, typeName(l.tipus), z.name, z.floor, z.unit,
-      sitName(l.sit), oriName(l.ori), urgName(l.urgency),
-      l.photoIds.length, l.obs,
-    ]),
-  )
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hdr, ...rows]), 'Lesiones')
-  const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-  zip.file('lesiones.xlsx', xlsxBuf)
-
+  onProgress('Generando archivo ZIP para descarga...')
   const blob = await zip.generateAsync({ type: 'blob' })
-  saveAs(blob, `${safeName(p.name)}_${p.workCode || 'backup'}.zip`)
+  saveAs(blob, `${safeName(data.project.name)}_${data.project.workCode || 'respaldo'}_backup.zip`)
 }

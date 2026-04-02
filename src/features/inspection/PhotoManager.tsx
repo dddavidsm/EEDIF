@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Camera, Trash2, UploadCloud } from 'lucide-react'
 import { fileToDataUrl, newId } from '@/utils/codeGenerator'
 import { useProjectStore } from '@/store/useProjectStore'
 import type { Photo } from '@/types'
@@ -6,15 +7,16 @@ import type { Photo } from '@/types'
 interface Props {
   lesionId: string
   photos: Photo[]
+  enabled?: boolean
 }
 
-export function PhotoManager({ lesionId, photos }: Props) {
+export function PhotoManager({ lesionId, photos, enabled = true }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const addPhoto = useProjectStore(s => s.addPhoto)
   const deletePhoto = useProjectStore(s => s.deletePhoto)
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files) return
+    if (!files || !enabled || !lesionId) return
     for (const file of Array.from(files)) {
       const dataUrl = await fileToDataUrl(file)
       const photo: Photo = {
@@ -30,17 +32,18 @@ export function PhotoManager({ lesionId, photos }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
+        <label className="text-[11px] font-semibold text-t2 tracking-[0.2em] uppercase">
           Fotos ({photos.length})
         </label>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="app-btn app-btn-ghost !min-h-[34px] !px-3 !py-1.5 !text-[12px]"
+          disabled={!enabled}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-text shadow-sm transition hover:border-accent/35 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <Camera className="h-4 w-4" strokeWidth={2.2} />
           Agregar foto
         </button>
       </div>
@@ -55,30 +58,42 @@ export function PhotoManager({ lesionId, photos }: Props) {
         onChange={e => handleFiles(e.target.files)}
       />
 
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={!enabled}
+        className="border-2 border-dashed border-slate-600 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-800/30 text-center transition hover:border-accent/55 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <UploadCloud className="h-12 w-12 text-slate-400" strokeWidth={1.9} />
+        <p className="mt-3 text-base font-semibold text-slate-200">Toca para añadir fotos de la lesion</p>
+        <p className="mt-1 text-sm text-slate-300/80">
+          Puedes tomar una foto o seleccionar imagenes desde el dispositivo.
+        </p>
+      </button>
+
       {photos.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {photos.map(p => (
-            <div key={p.id} className="relative group">
+            <div key={p.id} className="relative group overflow-hidden rounded-xl border border-border bg-white shadow-sm">
               <img
                 src={p.dataUrl}
                 alt={p.filename}
-                className="w-full aspect-[4/3] object-cover rounded-[var(--radius)] border border-border bg-s2"
+                className="w-full aspect-[4/3] object-cover bg-s2"
               />
               <button
                 type="button"
                 onClick={() => deletePhoto(p.id)}
-                className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-danger/90 text-white text-[10px] font-bold
-                  opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-danger text-white opacity-0 transition-opacity group-hover:opacity-100"
                 aria-label="Eliminar foto"
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <Trash2 className="h-4 w-4" strokeWidth={2.3} />
               </button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="py-6 text-center text-t2 text-[12px] border border-dashed border-border rounded-[var(--radius)] bg-s2/45">
-          Sin fotos adjuntas. Usa "Agregar foto" para capturar o subir imagen.
+        <div className="rounded-xl border border-dashed border-border bg-white p-5 text-center text-sm text-t2">
+          No hay fotos adjuntas en esta lesion.
         </div>
       )}
     </div>
