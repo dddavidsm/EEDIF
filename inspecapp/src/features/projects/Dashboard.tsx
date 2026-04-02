@@ -9,7 +9,9 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onOpenProject, onCreateNew }: DashboardProps) {
-  const { projects, loading, loadProjects } = useProjectStore()
+  const projects = useProjectStore(s => s.projects)
+  const loading = useProjectStore(s => s.loading)
+  const loadProjects = useProjectStore(s => s.loadProjects)
 
   useEffect(() => {
     loadProjects()

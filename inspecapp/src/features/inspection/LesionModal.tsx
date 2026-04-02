@@ -36,14 +36,10 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
   const createLesion = useProjectStore(s => s.createLesion)
   const updateLesion = useProjectStore(s => s.updateLesion)
   const deleteLesion = useProjectStore(s => s.deleteLesion)
+  const loadPhotos = useProjectStore(s => s.loadPhotos)
 
   // Photos from store for this lesion (edit mode)
-  const allPhotos = useProjectStore(s => {
-    if (!lesion) return [] as Photo[]
-    // Photos are not stored in the lesions array; we need to fetch them.
-    // For now we use a simple approach: photos are in the store
-    return [] as Photo[]
-  })
+  const photos = useProjectStore(s => s.photos)
 
   const isNew = !lesion
 
@@ -66,10 +62,11 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
         urgency: lesion.urgency,
         obs: lesion.obs,
       })
+      loadPhotos(lesion.id)
     } else {
       setForm({ tipus: 'E', sit: 'P', ori: 'H', urgency: 'L', obs: '' })
     }
-  }, [open, lesion])
+  }, [open, lesion, loadPhotos])
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: val }))
@@ -225,7 +222,7 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
 
         {/* ── Photos (only in edit mode) ────────────────────── */}
         {!isNew && lesion && (
-          <PhotoManager lesionId={lesion.id} photos={allPhotos} />
+          <PhotoManager lesionId={lesion.id} photos={photos} />
         )}
       </div>
     </Modal>

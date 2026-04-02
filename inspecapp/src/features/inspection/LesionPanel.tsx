@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, selectActiveZone } from '@/store/useProjectStore'
 import { Button } from '@/components/Button'
 import { UrgencyBadge } from '@/components/Chips'
 import { PhotoManager } from '@/features/inspection/PhotoManager'
@@ -20,7 +20,7 @@ export function LesionPanel({ selectedId, onSelect, onEditLesion, onAddLesion }:
   const lesions = useProjectStore(s => s.lesions)
   const photos = useProjectStore(s => s.photos)
   const loadPhotos = useProjectStore(s => s.loadPhotos)
-  const activeZone = useProjectStore(s => s.zones.find(z => z.id === s.activeZoneId))
+  const activeZone = useProjectStore(selectActiveZone)
 
   const [filter, setFilter] = useState<Filter>('all')
 

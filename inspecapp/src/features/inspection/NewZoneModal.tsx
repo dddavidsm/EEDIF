@@ -11,7 +11,10 @@ interface NewZoneModalProps {
 }
 
 export function NewZoneModal({ open, onClose }: NewZoneModalProps) {
-  const { activeProjectId, zones, createZone, setActiveZone } = useProjectStore()
+  const activeProjectId = useProjectStore(s => s.activeProjectId)
+  const zones = useProjectStore(s => s.zones)
+  const createZone = useProjectStore(s => s.createZone)
+  const setActiveZone = useProjectStore(s => s.setActiveZone)
   const [form, setForm] = useState({
     name: '',
     type: 'HA' as typeof ZONE_TYPES[number]['code'],
