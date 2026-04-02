@@ -3,6 +3,8 @@ import { useProjectStore, selectActiveProject } from '@/store/useProjectStore'
 import { NewZoneModal } from '@/features/inspection/NewZoneModal'
 import { LesionModal } from '@/features/inspection/LesionModal'
 import { LesionPanel } from '@/features/inspection/LesionPanel'
+import { StatsPanel } from '@/features/inspection/StatsPanel'
+import { ExportModal } from '@/features/inspection/ExportModal'
 import { SketchCanvas, type CanvasTool } from '@/features/inspection/canvas/SketchCanvas'
 import { Button } from '@/components/Button'
 import type { Lesion } from '@/types'
@@ -23,6 +25,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
   const [tool, setTool] = useState<CanvasTool>('select')
   const [selectedLesionId, setSelectedLesionId] = useState<string | null>(null)
   const [lesionModal, setLesionModal] = useState<{ open: boolean; lesion?: Lesion | null }>({ open: false })
+  const [showExport, setShowExport] = useState(false)
 
   const activeZone = zones.find(z => z.id === activeZoneId) ?? null
   const urgentCount = lesions.filter(l => l.urgency === 'U').length
@@ -74,14 +77,14 @@ export function ProjectView({ onBack }: ProjectViewProps) {
           >
             📊 Stats
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => setShowExport(true)}>
             📤 Exportar
           </Button>
         </div>
       </div>
 
       {view === 'stats' ? (
-        <StatsPlaceholder project={project} />
+        <StatsPanel />
       ) : (
         <>
           {/* ── Pestanas de zonas ──────────────────────────────────── */}
@@ -123,6 +126,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
         onClose={() => setLesionModal({ open: false })}
         lesion={lesionModal.lesion}
       />
+      <ExportModal open={showExport} onClose={() => setShowExport(false)} />
     </div>
   )
 }
@@ -248,18 +252,6 @@ function ZoneContent({
         onEditLesion={onEditLesion}
         onAddLesion={onAddLesion}
       />
-    </div>
-  )
-}
-
-function StatsPlaceholder({ project }: { project: { name: string } }) {
-  return (
-    <div className="flex-1 flex items-center justify-center text-t3">
-      <div className="text-center">
-        <span className="text-5xl block mb-3">📊</span>
-        <div className="text-sm font-semibold text-t2 mb-1">Panel de estadisticas</div>
-        <div className="text-xs text-t3">Se completara en la Fase 5 con datos reales</div>
-      </div>
     </div>
   )
 }
