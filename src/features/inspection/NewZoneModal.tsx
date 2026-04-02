@@ -74,15 +74,17 @@ export function NewZoneModal({ open, onClose }: NewZoneModalProps) {
                 key={zt.code}
                 onClick={() => handleTypeSelect(zt)}
                 className={`
-                  flex flex-col items-center gap-1 py-2.5 px-1.5 rounded-[var(--radius)] text-[11px] font-semibold
+                  flex flex-col items-center gap-1.5 py-3 px-2 rounded-[var(--radius)] text-[12px] font-semibold
                   cursor-pointer transition-all duration-150 border
                   ${form.type === zt.code
                     ? 'bg-accent-d text-accent border-accent'
                     : 'bg-s2 text-t2 border-border hover:bg-s3 hover:text-text'}
                 `}
               >
-                <span className="text-lg">{zt.emoji}</span>
-                {zt.name}
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-s1 border border-border font-mono text-[11px]">
+                  {zt.code}
+                </span>
+                <span className="leading-tight text-center">{zt.name}</span>
               </button>
             ))}
           </div>

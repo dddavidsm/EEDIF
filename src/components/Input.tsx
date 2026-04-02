@@ -6,7 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, className = '', ...props }, ref) => (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {label && (
         <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
           {label}
@@ -14,7 +14,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       )}
       <input
         ref={ref}
-        className={`w-full bg-s2 border border-border rounded-[var(--radius)] text-text text-[13px] px-3 py-2 outline-none transition-[border-color] duration-150 focus:border-accent placeholder:text-t3 ${className}`}
+        className={`w-full bg-s2 border border-border rounded-[var(--radius)] text-text text-[14px] px-3.5 py-2.5 outline-none transition-[border-color,box-shadow] duration-150 focus:border-accent placeholder:text-t3 ${className}`}
         {...props}
       />
     </div>
@@ -28,7 +28,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, className = '', ...props }, ref) => (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {label && (
         <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
           {label}
@@ -36,7 +36,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       )}
       <textarea
         ref={ref}
-        className={`w-full bg-s2 border border-border rounded-[var(--radius)] text-text text-[13px] px-3 py-2 outline-none transition-[border-color] duration-150 focus:border-accent placeholder:text-t3 resize-y min-h-[72px] ${className}`}
+        className={`w-full bg-s2 border border-border rounded-[var(--radius)] text-text text-[14px] px-3.5 py-2.5 outline-none transition-[border-color,box-shadow] duration-150 focus:border-accent placeholder:text-t3 resize-y min-h-[92px] ${className}`}
         {...props}
       />
     </div>

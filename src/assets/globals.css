@@ -3,23 +3,23 @@
 
 /* ─── Design tokens — Paleta corporativa SOCOTEC ────────────────────────────── */
 @theme {
-  /* Fondos - Dark blue corporate */
-  --color-bg:        #090B11;
-  --color-s1:        #0F1520;
-  --color-s2:        #151E2E;
-  --color-s3:        #1C2740;
-  --color-border:    #1F3050;
-  --color-border2:   #2C4270;
+  /* Fondos - Neutral corporate (alto contraste) */
+  --color-bg:        #EEF3FA;
+  --color-s1:        #FFFFFF;
+  --color-s2:        #F6F9FD;
+  --color-s3:        #E8EFF8;
+  --color-border:    #CFD9E8;
+  --color-border2:   #B3C2D8;
 
   /* Acento SOCOTEC — Azul corporativo */
   --color-accent:    #2563EB;
   --color-accent-h:  #3B82F6;
-  --color-accent-d:  rgba(37, 99, 235, 0.12);
+  --color-accent-d:  rgba(37, 99, 235, 0.14);
 
   /* Texto */
-  --color-text:      #DDE1EC;
-  --color-t2:        #7B90B5;
-  --color-t3:        #3F5070;
+  --color-text:      #10233E;
+  --color-t2:        #476287;
+  --color-t3:        #6A7F9F;
 
   /* Semanticos */
   --color-ok:        #22C55E;
@@ -47,7 +47,7 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   background-color: var(--color-bg);
   color: var(--color-text);
@@ -91,31 +91,33 @@ html, body, #root {
 /* ─── Tool button (toolbar) ─────────────────────────────────────────────────── */
 .tool-btn {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
-  padding: 8px 12px;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
   border-radius: var(--radius);
   background: transparent;
   border: 1px solid var(--color-border);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.015em;
   color: var(--color-t2);
   transition: all 0.15s;
-  min-width: 58px;
+  min-width: 116px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 .tool-btn:hover { background: var(--color-s3); border-color: var(--color-border2); color: var(--color-text); }
 .tool-btn.active { background: var(--color-accent-d); border-color: var(--color-accent); color: var(--color-accent); }
-.tool-btn .tool-icon { font-size: 18px; line-height: 1; }
+.tool-btn .tool-icon { line-height: 1; display: inline-flex; }
 
 /* ─── Zone tabs ─────────────────────────────────────────────────────────────── */
 .zone-tab {
-  padding: 9px 16px 10px;
+  padding: 11px 18px 12px;
   border-radius: 6px 6px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--color-border);
@@ -134,7 +136,7 @@ html, body, #root {
 .zone-tab:hover { background: var(--color-s3); color: var(--color-text); }
 .zone-tab.active { background: var(--color-bg); color: var(--color-text); border-color: var(--color-border); border-bottom-color: var(--color-bg); }
 .zone-tab-add {
-  padding: 9px 12px;
+  padding: 10px 14px;
   border-radius: 6px 6px 0 0;
   font-size: 18px;
   line-height: 1;
@@ -153,8 +155,8 @@ html, body, #root {
 .lesion-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: var(--radius);
   cursor: pointer;
   border: 1px solid transparent;
@@ -186,6 +188,37 @@ html, body, #root {
 .proj-card:hover { border-color: var(--color-accent); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
 .proj-card:hover::before { opacity: 1; }
 
+/* ─── Boton primario reutilizable ─────────────────────────────────────────── */
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.app-btn-accent {
+  background: var(--color-accent);
+  color: var(--color-white);
+}
+.app-btn-accent:hover { background: var(--color-accent-h); }
+.app-btn-ghost {
+  background: var(--color-s1);
+  color: var(--color-t2);
+  border-color: var(--color-border);
+}
+.app-btn-ghost:hover {
+  background: var(--color-s2);
+  color: var(--color-text);
+  border-color: var(--color-border2);
+}
+
 /* ─── Animacion de entrada ──────────────────────────────────────────────────── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(6px); }
@@ -196,3 +229,12 @@ html, body, #root {
 /* ─── Scrollbar oculta para tabs ────────────────────────────────────────────── */
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+
+@media (max-width: 980px) {
+  html, body, #root { font-size: 14px; }
+  .tool-btn {
+    min-width: 96px;
+    padding: 9px 11px;
+    font-size: 11px;
+  }
+}

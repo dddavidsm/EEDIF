@@ -259,7 +259,7 @@ export async function exportPDF(projectId: string): Promise<void> {
       if (urgZ > 0) {
         doc.setFontSize(7.5)
         doc.setTextColor(239, 68, 68)
-        doc.text(`⚠ ${urgZ} urgentes`, 18, y)
+        doc.text(`${urgZ} urgentes`, 18, y)
         y += 5
       }
 

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+﻿import { useRef, useState, useCallback, useEffect } from 'react'
 import { Stage, Layer, Rect, Circle, Text, Group, Shape } from 'react-konva'
 import type Konva from 'konva'
 import { useProjectStore } from '@/store/useProjectStore'
@@ -6,8 +6,6 @@ import { LESION_TYPES } from '@/types'
 import type { LesionTypeCode } from '@/types'
 import { newId, generateLesionCode, getLesionColor } from '@/utils/codeGenerator'
 import { QuickTypePicker } from './QuickTypePicker'
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 export type CanvasTool = 'select' | 'rect' | 'lesion'
 
@@ -18,29 +16,29 @@ interface Props {
 }
 
 interface DrawState {
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
 interface PendingPin {
-  cx: number; cy: number
-  sx: number; sy: number
+  cx: number
+  cy: number
+  sx: number
+  sy: number
 }
 
-// Overlay para nombrar un nuevo rectángulo sin usar window.prompt
 interface PendingRect {
   norm: { x: number; y: number; w: number; h: number }
-  // posición del input en pantalla (relativa al container)
-  sx: number; sy: number
+  sx: number
+  sy: number
   label: string
 }
-
-// ─── Constants ──────────────────────────────────────────────────────────────
 
 const GRID = 50
 const GRID_S = 10
 const MIN_RECT = 15
-
-// ─── Component ──────────────────────────────────────────────────────────────
 
 export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
@@ -53,15 +51,14 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
   const [draw, setDraw] = useState<DrawState | null>(null)
   const [pending, setPending] = useState<PendingPin | null>(null)
   const [pendingRect, setPendingRect] = useState<PendingRect | null>(null)
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
 
-  // Store
   const elements = useProjectStore(s => s.canvasElements)
   const lesions = useProjectStore(s => s.lesions)
   const zoneId = useProjectStore(s => s.activeZoneId)
   const upsert = useProjectStore(s => s.upsertCanvasElement)
   const createLesion = useProjectStore(s => s.createLesion)
-
-  // ─── Resize observer ────────────────────────────────────────────────────
+  const deleteCanvasElement = useProjectStore(s => s.deleteCanvasElement)
 
   useEffect(() => {
     const el = containerRef.current
@@ -74,7 +71,21 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
     return () => ro.disconnect()
   }, [])
 
-  // ─── Pointer → canvas coords ────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
+        void deleteCanvasElement(selectedElementId)
+        setSelectedElementId(null)
+      }
+      if (e.key === 'Escape') {
+        setPending(null)
+        setPendingRect(null)
+        setDraw(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedElementId, deleteCanvasElement])
 
   const toCanvas = useCallback((): { x: number; y: number } => {
     const stage = stageRef.current
@@ -87,7 +98,30 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
     }
   }, [])
 
-  // ─── Wheel zoom (centered on pointer) ──────────────────────────────────
+  const finalizeRect = useCallback(() => {
+    if (!draw) return
+    if (Math.abs(draw.w) <= MIN_RECT || Math.abs(draw.h) <= MIN_RECT) {
+      setDraw(null)
+      return
+    }
+
+    const norm = {
+      x: draw.w < 0 ? draw.x + draw.w : draw.x,
+      y: draw.h < 0 ? draw.y + draw.h : draw.y,
+      w: Math.abs(draw.w),
+      h: Math.abs(draw.h),
+    }
+
+    const stage = stageRef.current
+    if (stage && zoneId) {
+      const centerCanvas = { x: norm.x + norm.w / 2, y: norm.y + norm.h / 2 }
+      const sx = centerCanvas.x * scale + stage.x()
+      const sy = centerCanvas.y * scale + stage.y()
+      setPendingRect({ norm, sx, sy, label: '' })
+    }
+
+    setDraw(null)
+  }, [draw, zoneId, scale])
 
   const onWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault()
@@ -98,105 +132,93 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
 
     const old = stage.scaleX()
     const factor = 1.08
-    const next = e.evt.deltaY < 0
-      ? Math.min(old * factor, 5)
-      : Math.max(old / factor, 0.15)
-
-    const mp = {
-      x: (pointer.x - stage.x()) / old,
-      y: (pointer.y - stage.y()) / old,
-    }
+    const next = e.evt.deltaY < 0 ? Math.min(old * factor, 5) : Math.max(old / factor, 0.15)
+    const mp = { x: (pointer.x - stage.x()) / old, y: (pointer.y - stage.y()) / old }
 
     setScale(next)
-    setPos({
-      x: pointer.x - mp.x * next,
-      y: pointer.y - mp.y * next,
-    })
+    setPos({ x: pointer.x - mp.x * next, y: pointer.y - mp.y * next })
   }, [])
-
-  // ─── Touch pinch zoom + pan ─────────────────────────────────────────────
 
   const onTouchMove = useCallback((e: Konva.KonvaEventObject<TouchEvent>) => {
     const ts = e.evt.touches
-    if (ts.length !== 2) return
-    e.evt.preventDefault()
 
-    const d = Math.hypot(
-      ts[0].clientX - ts[1].clientX,
-      ts[0].clientY - ts[1].clientY,
-    )
-    const cx = (ts[0].clientX + ts[1].clientX) / 2
-    const cy = (ts[0].clientY + ts[1].clientY) / 2
+    if (ts.length === 2) {
+      e.evt.preventDefault()
+      const d = Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY)
+      const cx = (ts[0].clientX + ts[1].clientX) / 2
+      const cy = (ts[0].clientY + ts[1].clientY) / 2
 
-    if (lastPinchRef.current) {
-      const prev = lastPinchRef.current
-      const ratio = d / prev.dist
+      if (lastPinchRef.current) {
+        const prev = lastPinchRef.current
+        const ratio = d / prev.dist
 
-      setScale(s => {
-        const next = Math.min(Math.max(s * ratio, 0.15), 5)
-
-        setPos(p => {
-          const rect = containerRef.current?.getBoundingClientRect()
-          const sx = cx - (rect?.left ?? 0)
-          const sy = cy - (rect?.top ?? 0)
-          const mp = { x: (sx - p.x) / s, y: (sy - p.y) / s }
-          return {
-            x: sx - mp.x * next + (cx - prev.cx),
-            y: sy - mp.y * next + (cy - prev.cy),
-          }
+        setScale(s => {
+          const next = Math.min(Math.max(s * ratio, 0.15), 5)
+          setPos(p => {
+            const rect = containerRef.current?.getBoundingClientRect()
+            const sx = cx - (rect?.left ?? 0)
+            const sy = cy - (rect?.top ?? 0)
+            const mp = { x: (sx - p.x) / s, y: (sy - p.y) / s }
+            return {
+              x: sx - mp.x * next + (cx - prev.cx),
+              y: sy - mp.y * next + (cy - prev.cy),
+            }
+          })
+          return next
         })
+      }
 
-        return next
-      })
+      lastPinchRef.current = { dist: d, cx, cy }
+      return
     }
 
-    lastPinchRef.current = { dist: d, cx, cy }
-  }, [])
-
-  const onTouchEnd = useCallback(() => {
-    lastPinchRef.current = null
-  }, [])
-
-  // ─── Mouse down (start rect drawing) ───────────────────────────────────
-
-  const onMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button !== 0) return
-    if (tool === 'rect') {
+    if (tool === 'rect' && draw && ts.length === 1) {
       const p = toCanvas()
-      setDraw({ x: p.x, y: p.y, w: 0, h: 0 })
-    }
-  }, [tool, toCanvas])
-
-  // ─── Mouse move (update rect preview) ──────────────────────────────────
-
-  const onMouseMove = useCallback((_e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (tool === 'rect' && draw) {
-      const p = toCanvas()
-      setDraw(prev => prev ? { ...prev, w: p.x - prev.x, h: p.y - prev.y } : null)
+      setDraw(prev => (prev ? { ...prev, w: p.x - prev.x, h: p.y - prev.y } : null))
     }
   }, [tool, draw, toCanvas])
 
-  // ─── Mouse up (finish rect / place lesion / deselect) ──────────────────
+  const onTouchEnd = useCallback(() => {
+    if (tool === 'rect' && draw) finalizeRect()
+    lastPinchRef.current = null
+  }, [tool, draw, finalizeRect])
+
+  const onMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (e.evt.button !== 0) return
+
+    if (tool === 'rect') {
+      const p = toCanvas()
+      setDraw({ x: p.x, y: p.y, w: 0, h: 0 })
+      setSelectedElementId(null)
+      onSelectLesion(null)
+    }
+  }, [tool, toCanvas, onSelectLesion])
+
+  const onTouchStart = useCallback(() => {
+    if (tool === 'rect') {
+      const p = toCanvas()
+      setDraw({ x: p.x, y: p.y, w: 0, h: 0 })
+      setSelectedElementId(null)
+      onSelectLesion(null)
+    }
+    if (tool === 'lesion') {
+      const c = toCanvas()
+      const stage = stageRef.current
+      const sp = stage?.getPointerPosition()
+      if (sp) setPending({ cx: c.x, cy: c.y, sx: sp.x, sy: sp.y })
+    }
+  }, [tool, toCanvas, onSelectLesion])
+
+  const onMouseMove = useCallback(() => {
+    if (tool === 'rect' && draw) {
+      const p = toCanvas()
+      setDraw(prev => (prev ? { ...prev, w: p.x - prev.x, h: p.y - prev.y } : null))
+    }
+  }, [tool, draw, toCanvas])
 
   const onMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     if (tool === 'rect' && draw) {
-      if (Math.abs(draw.w) > MIN_RECT && Math.abs(draw.h) > MIN_RECT) {
-        const norm = {
-          x: draw.w < 0 ? draw.x + draw.w : draw.x,
-          y: draw.h < 0 ? draw.y + draw.h : draw.y,
-          w: Math.abs(draw.w),
-          h: Math.abs(draw.h),
-        }
-        // Calculate center in screen coords for the overlay input
-        const stage = stageRef.current
-        if (stage && zoneId) {
-          const centerCanvas = { x: norm.x + norm.w / 2, y: norm.y + norm.h / 2 }
-          const sx = centerCanvas.x * scale + stage.x()
-          const sy = centerCanvas.y * scale + stage.y()
-          setPendingRect({ norm, sx, sy, label: '' })
-        }
-      }
-      setDraw(null)
+      finalizeRect()
       return
     }
 
@@ -204,29 +226,24 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
       const c = toCanvas()
       const stage = stageRef.current
       const sp = stage?.getPointerPosition()
-      if (sp) {
-        setPending({ cx: c.x, cy: c.y, sx: sp.x, sy: sp.y })
-      }
+      if (sp) setPending({ cx: c.x, cy: c.y, sx: sp.x, sy: sp.y })
       return
     }
 
     if (tool === 'select') {
       const cls = e.target.getClassName()
-      if (cls === 'Stage' || cls === 'Rect' && !e.target.getParent()?.id()) {
+      if (cls === 'Stage') {
         onSelectLesion(null)
+        setSelectedElementId(null)
       }
     }
-  }, [tool, draw, toCanvas, zoneId, upsert, onSelectLesion])
-
-  // ─── Confirm rect label ──────────────────────────────────────────────────
+  }, [tool, draw, toCanvas, onSelectLesion, finalizeRect])
 
   const confirmRect = useCallback(() => {
     if (!pendingRect || !zoneId) return
-    upsert({ id: newId(), zoneId, ...pendingRect.norm, label: pendingRect.label.trim() })
+    void upsert({ id: newId(), zoneId, ...pendingRect.norm, label: pendingRect.label.trim() })
     setPendingRect(null)
   }, [pendingRect, zoneId, upsert])
-
-  // ─── Create lesion from QuickTypePicker ─────────────────────────────────
 
   const onTypeSelected = useCallback(async (typeCode: LesionTypeCode) => {
     if (!pending || !zoneId) return
@@ -234,7 +251,6 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
     const lesionType = LESION_TYPES.find(t => t.code === typeCode)
     const defaultSit = 'P' as const
     const defaultOri = lesionType?.hasOrientation ? ('H' as const) : null
-
     const code = generateLesionCode(typeCode, defaultSit, defaultOri, lesions)
 
     await createLesion({
@@ -254,25 +270,15 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
     setPending(null)
   }, [pending, zoneId, lesions, createLesion])
 
-  // ─── Stage drag end (sync pan position to state) ────────────────────────
-
   const onDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     if (e.target !== stageRef.current) return
     setPos({ x: e.target.x(), y: e.target.y() })
   }, [])
 
-  // ─── Cursor ─────────────────────────────────────────────────────────────
-
-  const cursor = tool === 'select' ? 'grab' : 'crosshair'
-
-  // ─── Render ─────────────────────────────────────────────────────────────
+  const selectedElement = selectedElementId ? elements.find(el => el.id === selectedElementId) ?? null : null
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full relative overflow-hidden bg-bg"
-      style={{ cursor }}
-    >
+    <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-bg" style={{ cursor: tool === 'select' ? 'grab' : 'crosshair' }}>
       <Stage
         ref={stageRef}
         width={size.w}
@@ -286,45 +292,64 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
+        onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onDragEnd={onDragEnd}
       >
-        {/* ── Grid background ───────────────────────────────────── */}
         <Layer listening={false}>
           <GridShape scale={scale} pos={pos} size={size} />
         </Layer>
 
-        {/* ── Canvas elements (rectangles) ──────────────────────── */}
         <Layer>
-          {elements.map(el => (
-            <Group key={el.id} id={el.id}>
-              <Rect
-                x={el.x}
-                y={el.y}
-                width={el.w}
-                height={el.h}
-                fill="rgba(37,99,235,0.04)"
-                stroke="rgba(37,99,235,0.22)"
-                strokeWidth={1.5}
-                cornerRadius={2}
-              />
-              {el.label && (
-                <Text
-                  x={el.x + 6}
-                  y={el.y + 5}
-                  text={el.label}
-                  fill="rgba(139,163,199,0.55)"
-                  fontSize={11}
-                  fontFamily="'IBM Plex Mono', monospace"
-                  fontStyle="600"
+          {elements.map(el => {
+            const isSel = selectedElementId === el.id
+            return (
+              <Group key={el.id} id={el.id}>
+                <Rect
+                  x={el.x}
+                  y={el.y}
+                  width={el.w}
+                  height={el.h}
+                  fill={isSel ? 'rgba(37,99,235,0.16)' : 'rgba(37,99,235,0.06)'}
+                  stroke={isSel ? '#1D4ED8' : 'rgba(37,99,235,0.38)'}
+                  strokeWidth={isSel ? 2.5 : 1.7}
+                  cornerRadius={4}
+                  draggable={tool === 'select'}
+                  onClick={(e) => {
+                    e.cancelBubble = true
+                    if (tool !== 'select') return
+                    setSelectedElementId(el.id)
+                    onSelectLesion(null)
+                  }}
+                  onTap={(e) => {
+                    e.cancelBubble = true
+                    if (tool !== 'select') return
+                    setSelectedElementId(el.id)
+                    onSelectLesion(null)
+                  }}
+                  onDragEnd={(e) => {
+                    const x = e.target.x()
+                    const y = e.target.y()
+                    void upsert({ ...el, x, y })
+                  }}
                 />
-              )}
-            </Group>
-          ))}
+                {el.label && (
+                  <Text
+                    x={el.x + 8}
+                    y={el.y + 7}
+                    text={el.label}
+                    fill="rgba(16,35,62,0.74)"
+                    fontSize={12}
+                    fontFamily="'IBM Plex Mono', monospace"
+                    fontStyle="600"
+                  />
+                )}
+              </Group>
+            )
+          })}
         </Layer>
 
-        {/* ── Drawing preview ───────────────────────────────────── */}
         {draw && (
           <Layer listening={false}>
             <Rect
@@ -332,29 +357,30 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
               y={draw.h < 0 ? draw.y + draw.h : draw.y}
               width={Math.abs(draw.w)}
               height={Math.abs(draw.h)}
-              fill="rgba(37,99,235,0.08)"
-              stroke="#2563EB"
-              strokeWidth={1.5}
+              fill="rgba(37,99,235,0.14)"
+              stroke="#1D4ED8"
+              strokeWidth={2}
               dash={[6, 3]}
-              cornerRadius={2}
+              cornerRadius={4}
             />
           </Layer>
         )}
 
-        {/* ── Lesion pins ───────────────────────────────────────── */}
         <Layer>
           {lesions.map(l => (
             <LesionPin
               key={l.id}
               l={l}
               isSelected={selectedLesionId === l.id}
-              onSelect={() => onSelectLesion(l.id)}
+              onSelect={() => {
+                setSelectedElementId(null)
+                onSelectLesion(l.id)
+              }}
             />
           ))}
         </Layer>
       </Stage>
 
-      {/* ── Quick type picker (HTML overlay) ──────────────────── */}
       {pending && (
         <QuickTypePicker
           x={pending.sx}
@@ -364,59 +390,59 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
         />
       )}
 
-      {/* ── Label input overlay (para nombrar rectángulos) ────── */}
       {pendingRect && (
         <div
           className="absolute z-20 animate-fade-in"
           style={{
-            left: Math.min(pendingRect.sx - 90, size.w - 210),
-            top: Math.min(pendingRect.sy - 20, size.h - 90),
+            left: Math.max(12, Math.min(pendingRect.sx - 110, size.w - 240)),
+            top: Math.max(12, Math.min(pendingRect.sy - 20, size.h - 110)),
           }}
         >
-          <div className="bg-s1 border border-border rounded-[var(--radius-md)] shadow-[0_12px_40px_rgba(0,0,0,.7)] p-3.5 w-[210px]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2">
-              Etiqueta del elemento
-            </div>
+          <div className="bg-s1 border border-border rounded-[var(--radius-md)] shadow-[0_12px_35px_rgba(16,35,62,.2)] p-3.5 w-[230px]">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2">Etiqueta del area</div>
             <input
               autoFocus
               type="text"
               value={pendingRect.label}
-              onChange={e => setPendingRect(r => r ? { ...r, label: e.target.value } : null)}
+              onChange={e => setPendingRect(r => (r ? { ...r, label: e.target.value } : null))}
               onKeyDown={e => {
                 if (e.key === 'Enter') confirmRect()
                 if (e.key === 'Escape') setPendingRect(null)
               }}
-              placeholder="ej: Sala, H1, Cocina..."
-              className="w-full bg-s2 border border-border rounded-[var(--radius)] text-[13px] text-text px-2.5 py-1.5 outline-none focus:border-accent transition-colors mb-2.5"
+              placeholder="Ej: Sala, Cocina, Pasillo..."
+              className="w-full bg-s2 border border-border rounded-[var(--radius)] text-[13px] text-text px-3 py-2 outline-none focus:border-accent transition-colors mb-2.5"
               style={{ fontFamily: 'var(--font-sans)' }}
             />
-            <div className="flex gap-1.5">
-              <button
-                onClick={confirmRect}
-                className="flex-1 bg-accent text-white text-[12px] font-semibold py-1.5 rounded-[var(--radius)] hover:bg-accent-h transition-colors"
-              >
-                Agregar
-              </button>
-              <button
-                onClick={() => setPendingRect(null)}
-                className="px-3 text-t2 text-[12px] border border-border rounded-[var(--radius)] hover:bg-s2 transition-colors"
-              >
-                ✕
-              </button>
+            <div className="flex gap-2">
+              <button onClick={confirmRect} className="app-btn app-btn-accent flex-1 !min-h-[34px] !text-[12px] !py-1.5">Guardar</button>
+              <button onClick={() => setPendingRect(null)} className="app-btn app-btn-ghost !min-h-[34px] !text-[12px] !py-1.5">Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Zoom indicator ────────────────────────────────────── */}
-      <div className="absolute bottom-2 left-2 text-[10px] font-mono text-t3 bg-bg/80 backdrop-blur-sm px-2 py-1 rounded-[var(--radius-sm)] border border-border select-none">
+      {selectedElement && (
+        <div className="absolute right-2 bottom-2 z-10 flex items-center gap-2 bg-s1/95 border border-border rounded-[var(--radius)] px-2.5 py-2 shadow-sm">
+          <span className="text-[11px] text-t2 font-mono truncate max-w-[140px]">{selectedElement.label || 'Area sin etiqueta'}</span>
+          <button
+            className="app-btn !min-h-[30px] !px-2.5 !py-1 !text-[11px] bg-danger/10 text-danger border border-danger/25 hover:bg-danger/20"
+            onClick={() => {
+              if (!selectedElementId) return
+              void deleteCanvasElement(selectedElementId)
+              setSelectedElementId(null)
+            }}
+          >
+            Eliminar
+          </button>
+        </div>
+      )}
+
+      <div className="absolute bottom-2 left-2 text-[11px] font-mono text-t2 bg-s1/92 backdrop-blur-sm px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border select-none">
         {Math.round(scale * 100)}%
       </div>
     </div>
   )
 }
-
-// ─── Grid (custom Konva Shape for performance) ──────────────────────────────
 
 function GridShape({
   scale,
@@ -440,9 +466,8 @@ function GridShape({
 
         c.save()
 
-        // Major grid
         c.beginPath()
-        c.strokeStyle = 'rgba(255,255,255,0.055)'
+        c.strokeStyle = 'rgba(16,35,62,0.14)'
         c.lineWidth = 1 / scale
         for (let x = x0; x <= x1; x += GRID) {
           c.moveTo(x, y0)
@@ -454,10 +479,9 @@ function GridShape({
         }
         c.stroke()
 
-        // Minor grid (only when zoomed enough)
         if (scale > 0.5) {
           c.beginPath()
-          c.strokeStyle = 'rgba(255,255,255,0.022)'
+          c.strokeStyle = 'rgba(16,35,62,0.07)'
           c.lineWidth = 0.5 / scale
           for (let x = x0; x <= x1; x += GRID_S) {
             if (x % GRID === 0) continue
@@ -478,8 +502,6 @@ function GridShape({
   )
 }
 
-// ─── Lesion Pin (Konva group) ───────────────────────────────────────────────
-
 function LesionPin({
   l,
   isSelected,
@@ -498,48 +520,43 @@ function LesionPin({
       onClick={(e) => { e.cancelBubble = true; onSelect() }}
       onTap={(e) => { e.cancelBubble = true; onSelect() }}
     >
-      {/* Selection halo */}
       {isSelected && (
-        <Circle
-          x={l.x} y={l.y} radius={22}
-          fill={color + '18'}
-          stroke={color + '44'}
-          strokeWidth={1}
-        />
+        <Circle x={l.x} y={l.y} radius={22} fill={color + '22'} stroke={color + '55'} strokeWidth={1.2} />
       )}
 
-      {/* Main circle */}
       <Circle
-        x={l.x} y={l.y} radius={r}
-        fill={color + (isSelected ? '35' : '22')}
+        x={l.x}
+        y={l.y}
+        radius={r}
+        fill={color + (isSelected ? '40' : '2A')}
         stroke={color}
-        strokeWidth={isSelected ? 2.5 : 1.8}
+        strokeWidth={isSelected ? 2.8 : 2}
         shadowBlur={isSelected ? 6 : 0}
         shadowColor={color}
-        shadowOpacity={isSelected ? 0.5 : 0}
+        shadowOpacity={isSelected ? 0.45 : 0}
       />
 
-      {/* Code label */}
       <Text
-        x={l.x - 22} y={l.y - fs / 2}
+        x={l.x - 22}
+        y={l.y - fs / 2}
         width={44}
         align="center"
         text={l.code}
-        fill={color}
+        fill={isSelected ? '#0F172A' : color}
         fontSize={fs}
         fontFamily="'IBM Plex Mono', monospace"
         fontStyle="700"
       />
 
-      {/* Observation text (when selected) */}
       {isSelected && l.obs && (
         <Text
-          x={l.x - 60} y={l.y + 22}
-          width={120}
+          x={l.x - 62}
+          y={l.y + 22}
+          width={124}
           align="center"
           text={l.obs.length > 35 ? l.obs.slice(0, 35) + '...' : l.obs}
-          fill="rgba(255,255,255,0.5)"
-          fontSize={8}
+          fill="rgba(16,35,62,0.64)"
+          fontSize={9}
           fontFamily="'IBM Plex Mono', monospace"
         />
       )}

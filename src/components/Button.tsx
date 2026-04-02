@@ -9,7 +9,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center gap-1.5 rounded-[var(--radius)] font-semibold transition-all duration-150 whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-default select-none'
+  'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] font-semibold transition-all duration-150 whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-default select-none min-h-[40px]'
 
 const variants: Record<Variant, string> = {
   accent: 'bg-accent text-white hover:bg-accent-h active:brightness-90',
@@ -18,10 +18,10 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  sm:   'px-2.5 py-1.5 text-xs',
-  md:   'px-3.5 py-[7px] text-[13px]',
-  lg:   'px-5 py-2.5 text-sm',
-  icon: 'p-[7px] aspect-square text-xs',
+  sm:   'px-3 py-2 text-[12px]',
+  md:   'px-4 py-2.5 text-[14px]',
+  lg:   'px-5 py-3 text-[15px]',
+  icon: 'p-2.5 aspect-square text-xs min-h-0',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

@@ -38,9 +38,10 @@ export function PhotoManager({ lesionId, photos }: Props) {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="text-[11px] font-semibold text-accent cursor-pointer hover:underline"
+          className="app-btn app-btn-ghost !min-h-[34px] !px-3 !py-1.5 !text-[12px]"
         >
-          + Agregar foto
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Agregar foto
         </button>
       </div>
 
@@ -55,7 +56,7 @@ export function PhotoManager({ lesionId, photos }: Props) {
       />
 
       {photos.length > 0 ? (
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {photos.map(p => (
             <div key={p.id} className="relative group">
               <img
@@ -66,17 +67,18 @@ export function PhotoManager({ lesionId, photos }: Props) {
               <button
                 type="button"
                 onClick={() => deletePhoto(p.id)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-danger/80 text-white text-[10px] font-bold
+                className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-danger/90 text-white text-[10px] font-bold
                   opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                aria-label="Eliminar foto"
               >
-                ✕
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="py-4 text-center text-t3 text-[11px] border border-dashed border-border rounded-[var(--radius)]">
-          📷 Sin fotos. Toca "Agregar foto" para capturar.
+        <div className="py-6 text-center text-t2 text-[12px] border border-dashed border-border rounded-[var(--radius)] bg-s2/45">
+          Sin fotos adjuntas. Usa "Agregar foto" para capturar o subir imagen.
         </div>
       )}
     </div>

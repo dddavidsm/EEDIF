@@ -32,12 +32,12 @@ export const URGENCY_LEVELS = [
 ] as const
 
 export const ZONE_TYPES = [
-  { code: 'FA', name: 'Fachada Anterior',  emoji: '🏛' },
-  { code: 'FP', name: 'Fachada Posterior', emoji: '🏛' },
-  { code: 'ZC', name: 'Zonas Comunes',     emoji: '🚪' },
-  { code: 'CO', name: 'Cubierta',          emoji: '🏠' },
-  { code: 'HA', name: 'Vivienda',          emoji: '🛏' },
-  { code: 'LO', name: 'Local',             emoji: '🏪' },
+  { code: 'FA', name: 'Fachada Anterior' },
+  { code: 'FP', name: 'Fachada Posterior' },
+  { code: 'ZC', name: 'Zonas Comunes' },
+  { code: 'CO', name: 'Cubierta' },
+  { code: 'HA', name: 'Vivienda' },
+  { code: 'LO', name: 'Local' },
 ] as const
 
 // ─── Tipos derivados ─────────────────────────────────────────────────────────
