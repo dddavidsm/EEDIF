@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useProjectStore, selectActiveProject } from '@/store/useProjectStore'
-import { formatDate } from '@/utils/codeGenerator'
 import { NewZoneModal } from '@/features/inspection/NewZoneModal'
+import { SketchCanvas, type CanvasTool } from '@/features/inspection/canvas/SketchCanvas'
 import { Button } from '@/components/Button'
 
 interface ProjectViewProps {
@@ -17,6 +17,8 @@ export function ProjectView({ onBack }: ProjectViewProps) {
 
   const [showNewZone, setShowNewZone] = useState(false)
   const [view, setView] = useState<'croquis' | 'stats'>('croquis')
+  const [tool, setTool] = useState<CanvasTool>('select')
+  const [selectedLesionId, setSelectedLesionId] = useState<string | null>(null)
 
   const activeZone = zones.find(z => z.id === activeZoneId) ?? null
   const urgentCount = lesions.filter(l => l.urgency === 'U').length
@@ -89,7 +91,13 @@ export function ProjectView({ onBack }: ProjectViewProps) {
           {/* ── Contenido de la zona ───────────────────────────────── */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {activeZone ? (
-              <ZoneContent zone={activeZone} />
+              <ZoneContent
+                zone={activeZone}
+                tool={tool}
+                setTool={setTool}
+                selectedLesionId={selectedLesionId}
+                onSelectLesion={setSelectedLesionId}
+              />
             ) : (
               <div className="flex-1 flex items-center justify-center flex-col gap-3 text-t3">
                 <span className="text-5xl">🗺</span>
@@ -148,25 +156,46 @@ function ZoneTabs({
   )
 }
 
-function ZoneContent({ zone }: { zone: { id: string; name: string; floor: string; unit: string; type: string } }) {
+function ZoneContent({
+  zone,
+  tool,
+  setTool,
+  selectedLesionId,
+  onSelectLesion,
+}: {
+  zone: { id: string; name: string; floor: string; unit: string; type: string }
+  tool: CanvasTool
+  setTool: (t: CanvasTool) => void
+  selectedLesionId: string | null
+  onSelectLesion: (id: string | null) => void
+}) {
   const lesions = useProjectStore(s => s.lesions)
   const canvasElements = useProjectStore(s => s.canvasElements)
 
+  const tools: { key: CanvasTool; icon: string; label: string }[] = [
+    { key: 'select', icon: '↖', label: 'Seleccionar' },
+    { key: 'rect',   icon: '⬜', label: 'Dibujar' },
+    { key: 'lesion', icon: '📍', label: 'Lesion' },
+  ]
+
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Panel izquierdo: Canvas (stub Fase 3) */}
+      {/* Panel izquierdo: Canvas */}
       <div className="flex flex-col flex-[0_0_62%] overflow-hidden">
-        {/* Toolbar stub */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-s1 border-b border-border shrink-0 flex-wrap">
-          <div className="flex gap-1.5">
-            {[
-              { key: 'select', icon: '↖', label: 'Seleccionar' },
-              { key: 'rect',   icon: '⬜', label: 'Dibujar' },
-              { key: 'lesion', icon: '📍', label: 'Lesion' },
-            ].map(tb => (
+        {/* Toolbar */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-s1 border-b border-border shrink-0">
+          <div className="flex gap-1">
+            {tools.map(tb => (
               <button
                 key={tb.key}
-                className="flex flex-col items-center gap-0.5 py-[7px] px-2.5 rounded-[var(--radius)] bg-transparent border border-border cursor-pointer text-[10px] text-t2 font-bold tracking-wider transition-all hover:bg-s3 hover:border-border2 hover:text-text min-w-[52px]"
+                onClick={() => setTool(tb.key)}
+                className={`
+                  flex flex-col items-center gap-0.5 py-[6px] px-2.5 rounded-[var(--radius)]
+                  cursor-pointer text-[10px] font-bold tracking-wider transition-all min-w-[52px] border
+                  ${tool === tb.key
+                    ? 'bg-accent-d text-accent border-accent'
+                    : 'bg-transparent text-t2 border-border hover:bg-s3 hover:border-border2 hover:text-text'}
+                `}
               >
                 <span className="text-base leading-none">{tb.icon}</span>
                 {tb.label}
@@ -174,27 +203,26 @@ function ZoneContent({ zone }: { zone: { id: string; name: string; floor: string
             ))}
           </div>
           <div className="w-px h-7 bg-border" />
-          <div className="ml-auto text-xs text-t2 font-mono">
-            {lesions.length} lesiones
+          <div className="ml-auto flex items-center gap-3 text-[10px] text-t3 font-mono">
+            <span>{canvasElements.length} elementos</span>
+            <span>{lesions.length} lesiones</span>
           </div>
         </div>
 
-        {/* Canvas placeholder */}
-        <div className="flex-1 flex items-center justify-center bg-bg text-t3 text-sm relative overflow-hidden">
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-4xl opacity-30">🗺</span>
-            <span className="text-xs text-t3">
-              Motor de croquis &mdash; Fase 3
-            </span>
-            <span className="text-[10px] text-t3">
-              {canvasElements.length} elementos &middot; {lesions.length} lesiones
-            </span>
-          </div>
+        {/* Canvas Konva */}
+        <div className="flex-1 relative overflow-hidden">
+          <SketchCanvas
+            tool={tool}
+            selectedLesionId={selectedLesionId}
+            onSelectLesion={onSelectLesion}
+          />
         </div>
 
         {/* Barra inferior */}
-        <div className="px-3 py-1.5 bg-bg border-t border-border text-[10px] text-t3 shrink-0">
-          Haz clic en un marcador para ver los detalles de la lesion
+        <div className="px-3 py-1.5 bg-s1 border-t border-border text-[10px] text-t3 shrink-0">
+          {tool === 'select' && 'Arrastra para mover el croquis · Scroll para zoom · Clic en un pin para seleccionar'}
+          {tool === 'rect' && 'Arrastra para dibujar un rectangulo · Suelta para definir la etiqueta'}
+          {tool === 'lesion' && 'Haz clic en el croquis para colocar una nueva lesion'}
         </div>
       </div>
 
