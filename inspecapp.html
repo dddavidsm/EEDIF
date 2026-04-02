@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InspecApp — Inspecció d'Edificis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090A0C;--s1:#111318;--s2:#181B22;--s3:#1E2129;--bd:#272C38;--bd2:#343B4A;--acc:#F5A623;--accd:rgba(245,166,35,.12);--tx:#DDE1EC;--t2:#7B84A0;--t3:#3F4459;--ok:#22C55E;--err:#EF4444;--r:6px;--r2:10px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--s1)}::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+.mono{font-family:'IBM Plex Mono',monospace}
+h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap;text-decoration:none}
+.btn-acc{background:var(--acc);color:#000}.btn-acc:hover{background:#FBBF24}.btn-acc:disabled{opacity:.4;cursor:default}
+.btn-g{background:transparent;color:var(--t2);border:1px solid var(--bd)}.btn-g:hover{background:var(--s2);color:var(--tx);border-color:var(--bd2)}
+.btn-d{background:rgba(239,68,68,.1);color:var(--err);border:1px solid rgba(239,68,68,.2)}.btn-d:hover{background:rgba(239,68,68,.18)}
+.btn-sm{padding:5px 10px;font-size:12px}.btn-icon{padding:7px;aspect-ratio:1}
+input,textarea,select{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:13px;padding:8px 12px;outline:none;transition:border-color .15s;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+textarea{resize:vertical;min-height:72px}
+label{font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;display:block}
+.ff{display:flex;flex-direction:column;gap:4px}
+.fr{display:flex;gap:12px}.fr .ff{flex:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(3px);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:24px;width:min(560px,95vw);max-height:90vh;overflow-y:auto}
+.mhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.mft{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)}
+.sep{height:1px;background:var(--bd);margin:14px 0}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.code-b{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:4px 9px;border-radius:4px;background:var(--s3);border:1px solid var(--bd2)}
+.tool-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 10px;border-radius:var(--r);background:transparent;border:1px solid var(--bd);cursor:pointer;font-size:10px;color:var(--t2);font-weight:700;letter-spacing:.04em;transition:all .15s;min-width:52px}
+.tool-btn:hover{background:var(--s3);border-color:var(--bd2);color:var(--tx)}
+.tool-btn.on{background:var(--accd);border-color:var(--acc);color:var(--acc)}
+.zone-tabs{display:flex;gap:2px;overflow-x:auto;padding:8px 12px 0;background:var(--s1);border-bottom:1px solid var(--bd);flex-shrink:0;scrollbar-width:none}
+.zone-tabs::-webkit-scrollbar{display:none}
+.ztab{padding:8px 14px 9px;border-radius:6px 6px 0 0;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--bd);border-bottom:none;background:var(--s2);color:var(--t2);white-space:nowrap;transition:all .15s;position:relative;top:1px;user-select:none}
+.ztab:hover{background:var(--s3);color:var(--tx)}
+.ztab.on{background:var(--bg);color:var(--tx);border-color:var(--bd);border-bottom-color:var(--bg)}
+.ztab-add{padding:8px 11px;border-radius:6px 6px 0 0;font-size:16px;cursor:pointer;border:1px dashed var(--bd);border-bottom:none;background:transparent;color:var(--t3);position:relative;top:1px;transition:all .15s;line-height:1}
+.ztab-add:hover{color:var(--acc);border-color:var(--acc);background:var(--accd)}
+.li{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;transition:all .15s}
+.li:hover{background:var(--s2);border-color:var(--bd)}
+.li.sel{background:var(--accd);border-color:rgba(245,166,35,.3)}
+.proj-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.proj-card:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.proj-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc);opacity:0;transition:opacity .2s}
+.proj-card:hover::before{opacity:1}
+.stat-box{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px}
+.stat-n{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--acc)}
+.stat-l{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:2px}
+.exp-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:1px solid var(--bd);cursor:pointer;transition:all .15s}
+.exp-opt:hover{border-color:var(--acc);background:var(--accd)}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fi{animation:fi .18s ease forwards}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useRef,useEffect,useMemo,useCallback}=React;
+
+/* ── Constants ─────────────────────────────────────────────────── */
+const LT=[
+  {code:'E', name:'Esquerdes',       color:'#EF4444',hasO:true },
+  {code:'F', name:'Fissures',        color:'#F97316',hasO:true },
+  {code:'MF',name:'Micro-Fissures',  color:'#EAB308',hasO:true },
+  {code:'ES',name:'Escrostaments',   color:'#A855F7',hasO:true },
+  {code:'Q', name:'Quartejat',       color:'#EC4899',hasO:false},
+  {code:'DA',name:'Desadherències',  color:'#3B82F6',hasO:false},
+  {code:'DG',name:'Degradacions',    color:'#71717A',hasO:false},
+  {code:'O', name:'Oxidacions',      color:'#D97706',hasO:false},
+  {code:'H', name:'Humitats',        color:'#06B6D4',hasO:false},
+  {code:'AD',name:'Armadures vistes',color:'#DC2626',hasO:false},
+];
+const SIT=[{code:'P',name:'Paret'},{code:'T',name:'Terra'},{code:'S',name:'Sostre'}];
+const ORI=[{code:'H',name:'Horitzontal'},{code:'V',name:'Vertical'},{code:'I',name:'Inclinada'}];
+const URG=[{code:'U',name:'Urgent',c:'#EF4444'},{code:'L',name:'Lleu',c:'#F59E0B'},{code:'I',name:'Informatiu',c:'#3B82F6'}];
+const ZTYPES=[
+  {code:'FA',name:'Façana Anterior',em:'🏛'},{code:'FP',name:'Façana Posterior',em:'🏛'},
+  {code:'ZC',name:'Zones Comuns',em:'🚪'},{code:'CO',name:'Coberta',em:'🏠'},
+  {code:'HA',name:'Habitatge',em:'🛏'},{code:'LO',name:'Local',em:'🏪'},
+];
+
+let _uid=1000;
+const uid=()=>`_${++_uid}`;
+const lt=(c)=>LT.find(t=>t.code===c)||LT[0];
+const urg=(c)=>URG.find(u=>u.code===c)||URG[1];
+
+const autoCode=(tipus,sit,ori,lesions)=>{
+  const t=lt(tipus);
+  const base=t.hasO?`${tipus}${ori}${sit}`:`${tipus}${sit}`;
+  const n=lesions.filter(l=>l.code.startsWith(base)&&l.code.slice(base.length).match(/^\d+$/)).length+1;
+  return `${base}${n}`;
+};
+
+/* ── Sample Data ───────────────────────────────────────────────── */
+const DEMO={
+  id:'p1',name:'Ramon Turró, 157',codiObra:'15350',
+  edifici:'C/ Ramon Turró, 157, Barcelona',inspector:'José Raúl González',
+  data:'19/10/2024',
+  desc:'Edifici plurifamiliar entre mitgeres. PB + 5 plantes. Estructura de paret de fàbrica de maó, forjats de volta catalana. Façana en estucat en fred, zones comuns enguixades i pintades.',
+  zones:[
+    {id:'z1',name:'Façana Anterior',type:'FA',planta:'Façana',pis:'-',
+     elements:[
+       {id:'e1',x:80,y:40,w:440,h:300,lbl:''},
+       {id:'e2',x:100,y:72,w:76,h:50,lbl:'Balcó'},
+       {id:'e3',x:222,y:72,w:76,h:50,lbl:'Balcó'},
+       {id:'e4',x:344,y:72,w:76,h:50,lbl:'Balcó'},
+       {id:'e5',x:100,y:158,w:76,h:50,lbl:''},
+       {id:'e6',x:240,y:158,w:76,h:50,lbl:''},
+       {id:'e7',x:364,y:158,w:76,h:50,lbl:''},
+       {id:'e8',x:100,y:240,w:76,h:50,lbl:''},
+       {id:'e9',x:240,y:240,w:76,h:50,lbl:''},
+       {id:'e10',x:215,y:308,w:88,h:32,lbl:'Porta'},
+     ],
+     lesions:[
+       {id:'l1',code:'FHP1',tipus:'F',sit:'P',ori:'H',x:148,y:96,urg:'L',obs:'Fissura horitzontal a la cornisa primer pis',fotos:1},
+       {id:'l2',code:'FHP2',tipus:'F',sit:'P',ori:'H',x:310,y:130,urg:'L',obs:'Fissura en zona balconera',fotos:1},
+       {id:'l3',code:'DAP1',tipus:'DA',sit:'P',ori:null,x:200,y:218,urg:'U',obs:"Desadherència de l'arrebossat. Risc de caiguda imminent.",fotos:2},
+       {id:'l4',code:'HP1', tipus:'H', sit:'P',ori:null,x:418,y:250,urg:'I',obs:'Taca humitat cantó dret',fotos:1},
+       {id:'l5',code:'EVP1',tipus:'E', sit:'P',ori:'V',x:88, y:178,urg:'U',obs:'Esquerda vertical passant per 3 plantes cantó esquerra',fotos:2},
+       {id:'l6',code:'FS1', tipus:'F', sit:'S',ori:null,x:260,y:58, urg:'L',obs:'Fissures cornisa superior',fotos:1},
+     ]},
+    {id:'z2',name:'Façana Posterior',type:'FP',planta:'Façana',pis:'-',
+     elements:[
+       {id:'e20',x:80,y:50,w:440,h:300,lbl:''},
+       {id:'e21',x:210,y:316,w:88,h:32,lbl:'Porta posterior'},
+     ],
+     lesions:[
+       {id:'l10',code:'FVP1',tipus:'F',sit:'P',ori:'V',x:200,y:148,urg:'L',obs:'Fissura vertical façana posterior',fotos:1},
+       {id:'l11',code:'HP1', tipus:'H',sit:'P',ori:null, x:380,y:200,urg:'U',obs:'Humitat per filtració coberta',fotos:2},
+       {id:'l12',code:'OP1', tipus:'O',sit:'P',ori:null, x:92, y:278,urg:'L',obs:'Oxidació tuberia baixant',fotos:1},
+       {id:'l13',code:'DAP1',tipus:'DA',sit:'P',ori:null,x:320,y:100,urg:'L',obs:'Desadherència parament vertical',fotos:1},
+     ]},
+    {id:'z3',name:'Zones Comuns PB',type:'ZC',planta:'Planta Baixa',pis:'-',
+     elements:[
+       {id:'e30',x:60,y:40,w:140,h:220,lbl:'Vestíbul'},
+       {id:'e31',x:220,y:40,w:120,h:220,lbl:'Escala'},
+       {id:'e32',x:360,y:40,w:80,h:220,lbl:'Traster'},
+     ],
+     lesions:[
+       {id:'l20',code:'DAP1',tipus:'DA',sit:'P',ori:null,x:118,y:100,urg:'L',obs:'Desadherència pintura vestíbul',fotos:1},
+       {id:'l21',code:'HS1', tipus:'H', sit:'S',ori:null,x:252,y:72, urg:'U',obs:'Humitat sostre escala. Filtració coberta.',fotos:3},
+       {id:'l22',code:'DGS1',tipus:'DG',sit:'S',ori:null,x:390,y:80, urg:'L',obs:'Degradació sostre traster',fotos:1},
+       {id:'l23',code:'FVP1',tipus:'F', sit:'P',ori:'V',x:62, y:180,urg:'I',obs:'Fissura vertical paret vestíbul',fotos:1},
+     ]},
+    {id:'z4',name:'Pis Principal 2a',type:'HA',planta:'Principal',pis:'2a',
+     elements:[
+       {id:'e40',x:60,y:40,w:190,h:140,lbl:'H1 - Dormitori'},
+       {id:'e41',x:270,y:40,w:120,h:100,lbl:'H2 - Dormitori'},
+       {id:'e42',x:60,y:200,w:100,h:90,lbl:'C - Cuina'},
+       {id:'e43',x:180,y:200,w:90,h:90,lbl:'L1 - Bany'},
+       {id:'e44',x:290,y:160,w:100,h:130,lbl:'Sala'},
+     ],
+     lesions:[
+       {id:'l30',code:'DAP1',tipus:'DA',sit:'P',ori:null,x:138,y:94, urg:'L',obs:'Desadherència paret H1',fotos:1},
+       {id:'l31',code:'HS1', tipus:'H', sit:'S',ori:null,x:318,y:65, urg:'U',obs:'Humitat al sostre H2. Filtració de pis superior.',fotos:2},
+       {id:'l32',code:'FHP1',tipus:'F', sit:'P',ori:'H',x:92, y:235,urg:'I',obs:'Fissura horitzontal cuina',fotos:1},
+       {id:'l33',code:'DGS1',tipus:'DG',sit:'S',ori:null,x:328,y:202,urg:'L',obs:'Degradació sostre sala. Bombament.',fotos:1},
+       {id:'l34',code:'HP1', tipus:'H', sit:'P',ori:null,x:220,y:225,urg:'U',obs:'Humitat paret bany. Possible fuga canonada.',fotos:2},
+     ]},
+    {id:'z5',name:'Coberta',type:'CO',planta:'Coberta',pis:'-',
+     elements:[
+       {id:'e50',x:60,y:40,w:490,h:290,lbl:'Coberta plana'},
+       {id:'e51',x:210,y:110,w:130,h:80,lbl:'Caixa escala'},
+       {id:'e52',x:410,y:50,w:120,h:60,lbl:'Maquinària'},
+     ],
+     lesions:[
+       {id:'l40',code:'FHP1',tipus:'F', sit:'P',ori:'H',x:148,y:200,urg:'U',obs:'Fissura coberta zona sud. Filtrant',fotos:3},
+       {id:'l41',code:'HT1', tipus:'H', sit:'T',ori:null,x:365,y:152,urg:'U',obs:'Filtració coberta. Bassa recurrent.',fotos:2},
+       {id:'l42',code:'OP1', tipus:'O', sit:'P',ori:null,x:498,y:200,urg:'L',obs:'Oxidació barana perimetral',fotos:1},
+       {id:'l43',code:'ESS1',tipus:'ES',sit:'S',ori:null,x:260,y:90, urg:'L',obs:'Escrostament escala accés coberta',fotos:1},
+     ]},
+  ]
+};
+
+/* ── Tiny UI ───────────────────────────────────────────────────── */
+const X=({onClick})=>(
+  <button onClick={onClick} className="btn btn-g btn-icon btn-sm" style={{fontSize:12}}>✕</button>
+);
+const TypeChip=({code})=>{const t=lt(code);return(
+  <span className="chip" style={{background:t.color+'22',color:t.color,border:`1px solid ${t.color}44`}}>{code}</span>
+);};
+const UrgBadge=({code})=>{const u=urg(code);return(
+  <span className="tag" style={{background:u.c+'22',color:u.c}}>{u.name}</span>
+);};
+const Tog=({opts,val,onSet,color})=>(
+  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+    {opts.map(o=>(
+      <button key={o.code} onClick={()=>onSet(o.code)}
+        style={{padding:'6px 12px',borderRadius:'var(--r)',border:`1px solid ${val===o.code?(color||'var(--acc)')+'88':'var(--bd)'}`,
+          background:val===o.code?(color||'var(--acc)')+'22':'var(--s2)',
+          color:val===o.code?color||'var(--acc)':'var(--t2)',
+          cursor:'pointer',fontSize:12,fontWeight:600,transition:'all .15s'}}>
+        {o.name}
+      </button>
+    ))}
+  </div>
+);
+
+/* ── Lesion Ficha Modal ─────────────────────────────────────────── */
+const Ficha=({lesion,allLesions,onSave,onDelete,onClose})=>{
+  const isNew=!lesion.id;
+  const [f,sf]=useState({tipus:lesion.tipus||'F',sit:lesion.sit||'P',ori:lesion.ori||'H',urg:lesion.urg||'L',obs:lesion.obs||'',fotos:lesion.fotos||0});
+  const set=(k,v)=>sf(p=>({...p,[k]:v}));
+  const t=lt(f.tipus);
+  const code=isNew?autoCode(f.tipus,f.sit,f.ori,allLesions):lesion.code;
+  const urgColor=urg(f.urg).c;
+
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal fi" style={{maxWidth:520}}>
+        <div className="mhd">
+          <div>
+            <h2 style={{marginBottom:6}}>{isNew?'Afegir nova lesió':'Editar lesió'}</h2>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontFamily:'IBM Plex Mono',fontSize:17,fontWeight:700,color:t.color,padding:'3px 10px',background:t.color+'18',borderRadius:5,border:`1px solid ${t.color}44`}}>{code}</span>
+              <span style={{fontSize:11,color:'var(--t2)'}}>codi autogenerat</span>
+            </div>
+          </div>
+          <X onClick={onClose}/>
+        </div>
+
+        <div className="ff" style={{marginBottom:14}}>
+          <label>Tipus de lesió</label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:5}}>
+            {LT.map(tp=>(
+              <button key={tp.code} onClick={()=>set('tipus',tp.code)}
+                style={{padding:'8px 4px',borderRadius:'var(--r)',border:`1.5px solid ${f.tipus===tp.code?tp.color:'var(--bd)'}`,
+                  background:f.tipus===tp.code?tp.color+'1A':'var(--s2)',color:f.tipus===tp.code?tp.color:'var(--t2)',
+                  cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2,transition:'all .15s'}}>
+                <span style={{fontFamily:'IBM Plex Mono',fontSize:11,fontWeight:700}}>{tp.code}</span>
+                <span style={{fontSize:9,fontWeight:500}}>{tp.name.split('/')[0].split(' ')[0]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+          <div className="ff">
+            <label>Situació</label>
+            <Tog opts={SIT} val={f.sit} onSet={v=>set('sit',v)} color={t.color}/>
+          </div>
+          {t.hasO&&<div className="ff">
+            <label>Orientació</label>
+            <Tog opts={ORI} val={f.ori} onSet={v=>set('ori',v)} color={t.color}/>
+          </div>}
+        </div>
+
+        <div className="ff" style={{marginBottom:14}}>
+          <label>Urgència</label>
+          <Tog opts={URG.map(u=>({code:u.code,name:u.name}))} val={f.urg} onSet={v=>set('urg',v)} color={urgColor}/>
+        </div>
+
+        <div className="ff" style={{marginBottom:14}}>
+          <label>Observacions</label>
+          <textarea value={f.obs} onChange={e=>set('obs',e.target.value)} placeholder="Descripció detallada de la lesió, dimensions estimades, possible causa..."/>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:'var(--s2)',borderRadius:'var(--r)',border:'1px solid var(--bd)',marginBottom:16}}>
+          <span style={{fontSize:22}}>📷</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600,fontSize:13}}>{f.fotos} foto{f.fotos!==1?'s':''} adjunta{f.fotos!==1?'des':''}</div>
+            <div style={{fontSize:11,color:'var(--t2)'}}>Adjunta fotos de la lesió per identificació i datació</div>
+          </div>
+          <button className="btn btn-g btn-sm" onClick={()=>set('fotos',f.fotos+1)}>+ Foto</button>
+          {f.fotos>0&&<button className="btn btn-g btn-sm" onClick={()=>set('fotos',Math.max(0,f.fotos-1))}>-</button>}
+        </div>
+
+        <details style={{marginBottom:12}}>
+          <summary style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--t3)',cursor:'pointer'}}>Simbologia de referència</summary>
+          <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}}>
+            {LT.map(tp=>(
+              <div key={tp.code} style={{display:'flex',alignItems:'center',gap:4,fontSize:10,color:'var(--t2)'}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:tp.color}}/>
+                <span style={{fontFamily:'IBM Plex Mono',fontWeight:600,color:tp.color}}>{tp.code}</span>
+                <span>{tp.name}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <div className="mft" style={{justifyContent:'space-between'}}>
+          <div>{!isNew&&<button className="btn btn-d btn-sm" onClick={onDelete}>Eliminar</button>}</div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-g" onClick={onClose}>Cancel·lar</button>
+            <button className="btn btn-acc" onClick={()=>onSave({...f,code,id:lesion.id||uid(),x:lesion.x,y:lesion.y})}>
+              {isNew?'Afegir lesió':'Guardar canvis'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Croquis Canvas ─────────────────────────────────────────────── */
+const Canvas=({elements,lesions,selected,tool,onClickLesion,onAddLesion,onAddRect})=>{
+  const ref=useRef(null);
+  const [draw,setDraw]=useState(null);
+  const [qpos,setQpos]=useState(null);
+
+  const toSVG=(e)=>{
+    const s=ref.current,r=s.getBoundingClientRect();
+    return{x:(e.clientX-r.left)/r.width*620,y:(e.clientY-r.top)/r.height*420};
+  };
+
+  const onMD=(e)=>{if(tool==='rect'){const p=toSVG(e);setDraw({x:p.x,y:p.y,w:0,h:0});}};
+  const onMM=(e)=>{if(draw&&tool==='rect'){const p=toSVG(e);setDraw(d=>({...d,w:p.x-d.x,h:p.y-d.y}));}};
+  const onMU=()=>{
+    if(draw&&tool==='rect'&&Math.abs(draw.w)>12&&Math.abs(draw.h)>12){
+      const r={x:draw.w<0?draw.x+draw.w:draw.x,y:draw.h<0?draw.y+draw.h:draw.y,w:Math.abs(draw.w),h:Math.abs(draw.h)};
+      const lbl=window.prompt('Etiqueta (ex: H1, C, L1, Sala...):')||'';
+      onAddRect({id:uid(),...r,lbl});
+    }
+    setDraw(null);
+  };
+  const onCLick=(e)=>{
+    if(tool!=='lesion'||qpos)return;
+    const p=toSVG(e);setQpos(p);
+  };
+
+  return(
+    <svg ref={ref} viewBox="0 0 620 420" style={{width:'100%',height:'100%',cursor:tool==='lesion'?'crosshair':tool==='rect'?'crosshair':'default',display:'block'}}
+      onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onClick={onCLick}>
+      <defs>
+        <pattern id="sg" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M10 0L0 0 0 10" fill="none" stroke="rgba(255,255,255,0.035)" strokeWidth="0.5"/>
+        </pattern>
+        <pattern id="bg" width="50" height="50" patternUnits="userSpaceOnUse">
+          <rect width="50" height="50" fill="url(#sg)"/>
+          <path d="M50 0L0 0 0 50" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+        </pattern>
+      </defs>
+      <rect width="620" height="420" fill="url(#bg)"/>
+
+      {/* Rooms */}
+      {elements.map(el=>(
+        <g key={el.id}>
+          <rect x={el.x} y={el.y} width={el.w} height={el.h} fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" rx="2"/>
+          {el.lbl&&<text x={el.x+5} y={el.y+13} fill="rgba(255,255,255,0.38)" fontSize="9" fontFamily="IBM Plex Mono" fontWeight="600">{el.lbl}</text>}
+        </g>
+      ))}
+
+      {/* Drawing preview */}
+      {draw&&<rect
+        x={draw.w<0?draw.x+draw.w:draw.x} y={draw.h<0?draw.y+draw.h:draw.y}
+        width={Math.abs(draw.w)} height={Math.abs(draw.h)}
+        fill="rgba(245,166,35,0.08)" stroke="#F5A623" strokeWidth="1.5" strokeDasharray="5,3" rx="2"/>}
+
+      {/* Lesion pins */}
+      {lesions.map(l=>{
+        const t=lt(l.tipus),sel=selected===l.id;
+        return(
+          <g key={l.id} onClick={e=>{e.stopPropagation();onClickLesion(l.id)}} style={{cursor:'pointer'}}>
+            {sel&&<circle cx={l.x} cy={l.y} r={20} fill={t.color+'18'} stroke={t.color+'44'} strokeWidth="1"/>}
+            <circle cx={l.x} cy={l.y} r={sel?13:11}
+              fill={t.color+(sel?'30':'22')} stroke={t.color} strokeWidth={sel?2.5:1.8}
+              style={{filter:sel?`drop-shadow(0 0 5px ${t.color}88)`:undefined}}/>
+            <text x={l.x} y={l.y+.5} textAnchor="middle" dominantBaseline="middle"
+              fill={t.color} fontSize={l.code.length>4?7:8} fontFamily="IBM Plex Mono" fontWeight="700">{l.code}</text>
+            {sel&&l.obs&&<text x={l.x} y={l.y+22} textAnchor="middle" fill="rgba(255,255,255,.5)" fontSize="7.5" fontFamily="DM Sans">{l.obs.slice(0,35)}{l.obs.length>35?'…':''}</text>}
+          </g>
+        );
+      })}
+
+      {/* Quick type picker */}
+      {qpos&&(
+        <foreignObject x={Math.min(qpos.x+5,430)} y={Math.min(qpos.y+5,280)} width="188" height="230">
+          <div style={{background:'#13151A',border:'1px solid #343B4A',borderRadius:8,padding:10,boxShadow:'0 12px 40px rgba(0,0,0,.7)'}}>
+            <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'#7B84A0',marginBottom:7}}>Tipus de lesió</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
+              {LT.map(tp=>(
+                <button key={tp.code} onClick={e=>{e.stopPropagation();onAddLesion({x:qpos.x,y:qpos.y,tipus:tp.code});setQpos(null);}}
+                  style={{padding:'5px 6px',background:tp.color+'1A',border:`1px solid ${tp.color}44`,borderRadius:4,
+                    color:tp.color,cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'IBM Plex Mono',textAlign:'left'}}>
+                  {tp.code}
+                </button>
+              ))}
+            </div>
+            <button onClick={e=>{e.stopPropagation();setQpos(null);}}
+              style={{marginTop:7,width:'100%',padding:'4px',background:'transparent',border:'none',color:'#3F4459',cursor:'pointer',fontSize:11,fontFamily:'DM Sans'}}>
+              Cancel·lar
+            </button>
+          </div>
+        </foreignObject>
+      )}
+
+      {lesions.length===0&&elements.length===0&&(
+        <text x="310" y="210" textAnchor="middle" fill="rgba(255,255,255,0.12)" fontSize="12" fontFamily="DM Sans">
+          Utilitza les eines per dibuixar el croquis i afegir lesions
+        </text>
+      )}
+    </svg>
+  );
+};
+
+/* ── Zone View ─────────────────────────────────────────────────── */
+const ZoneView=({zone,onUpdate})=>{
+  const [tool,setTool]=useState('select');
+  const [sel,setSel]=useState(null);
+  const [ficha,setFicha]=useState(null);
+  const [filter,setFilter]=useState('all');
+
+  const filtered=useMemo(()=>filter==='all'?zone.lesions:zone.lesions.filter(l=>l.urg===filter),[zone.lesions,filter]);
+  const selD=sel?zone.lesions.find(l=>l.id===sel):null;
+
+  const addLesion=({x,y,tipus})=>setFicha({lesion:{x,y,tipus,sit:'P',ori:'H',urg:'L',obs:'',fotos:0},mode:'new'});
+  const saveLesion=(data)=>{
+    const ex=zone.lesions.find(l=>l.id===data.id);
+    onUpdate({...zone,lesions:ex?zone.lesions.map(l=>l.id===data.id?data:l):[...zone.lesions,data]});
+    setFicha(null);setSel(data.id);
+  };
+  const delLesion=(id)=>{onUpdate({...zone,lesions:zone.lesions.filter(l=>l.id!==id)});setFicha(null);setSel(null);};
+  const addRect=(el)=>onUpdate({...zone,elements:[...zone.elements,el]});
+
+  const typeStats=useMemo(()=>{const c={};zone.lesions.forEach(l=>{c[l.tipus]=(c[l.tipus]||0)+1});return c;},[zone.lesions]);
+
+  return(
+    <div style={{display:'flex',flex:1,overflow:'hidden',flexDirection:'column'}}>
+      {/* Toolbar */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',background:'var(--s1)',borderBottom:'1px solid var(--bd)',flexShrink:0,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:5}}>
+          {[{k:'select',i:'↖',l:'Seleccionar'},{k:'rect',i:'⬜',l:'Dibuixar'},{k:'lesion',i:'📍',l:'Lesió'}].map(tb=>(
+            <button key={tb.k} className={`tool-btn${tool===tb.k?' on':''}`} onClick={()=>setTool(tb.k)}>
+              <span style={{fontSize:16,lineHeight:1}}>{tb.i}</span>{tb.l}
+            </button>
+          ))}
+        </div>
+        <div style={{width:1,height:28,background:'var(--bd)'}}/>
+        <div style={{display:'flex',gap:4}}>
+          {['all',...URG.map(u=>u.code)].map(f=>(
+            <button key={f} className={`btn btn-sm ${filter===f?'btn-acc':'btn-g'}`} onClick={()=>setFilter(f)}>
+              {f==='all'?'Totes':URG.find(u=>u.code===f)?.name}
+            </button>
+          ))}
+        </div>
+        <div style={{marginLeft:'auto',fontSize:12,color:'var(--t2)',fontFamily:'IBM Plex Mono'}}>
+          {zone.lesions.length} lesions · <span style={{color:'#EF4444'}}>{zone.lesions.filter(l=>l.urg==='U').length}U</span>
+        </div>
+      </div>
+
+      <div style={{display:'flex',flex:1,overflow:'hidden'}}>
+        {/* Canvas left */}
+        <div style={{display:'flex',flexDirection:'column',flex:'0 0 62%',overflow:'hidden'}}>
+          <div style={{padding:'5px 12px',background:'var(--bg)',borderBottom:'1px solid var(--bd)',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',flexShrink:0}}>
+            <span style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',color:'var(--t3)'}}>Llegenda:</span>
+            {LT.filter(t=>typeStats[t.code]).map(t=>(
+              <div key={t.code} style={{display:'flex',alignItems:'center',gap:3,fontSize:10}}>
+                <div style={{width:7,height:7,borderRadius:'50%',background:t.color}}/>
+                <span style={{fontFamily:'IBM Plex Mono',fontWeight:700,color:t.color,fontSize:9}}>{t.code}</span>
+                <span style={{color:'var(--t2)'}}>({typeStats[t.code]})</span>
+              </div>
+            ))}
+            {!Object.keys(typeStats).length&&<span style={{fontSize:10,color:'var(--t3)'}}>Sense lesions</span>}
+          </div>
+          <div style={{flex:1,overflow:'hidden',position:'relative'}}>
+            <Canvas elements={zone.elements} lesions={filtered} selected={sel} tool={tool}
+              onClickLesion={setSel} onAddLesion={addLesion} onAddRect={addRect}/>
+          </div>
+          <div style={{padding:'5px 12px',background:'var(--bg)',borderTop:'1px solid var(--bd)',fontSize:10,color:'var(--t3)',flexShrink:0}}>
+            {tool==='select'&&'Clica un marcador per veure els detalls de la lesió'}
+            {tool==='rect'&&'Arrossega per dibuixar una habitació o zona al croquis'}
+            {tool==='lesion'&&'Clica sobre el croquis per marcar una nova lesió'}
+          </div>
+        </div>
+
+        {/* Right panel */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',borderLeft:'1px solid var(--bd)',background:'var(--s1)'}}>
+          {selD?(
+            <div style={{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                    <span style={{fontSize:18,fontFamily:'IBM Plex Mono',fontWeight:700,color:lt(selD.tipus).color}}>{selD.code}</span>
+                    <UrgBadge code={selD.urg}/>
+                  </div>
+                  <div style={{fontSize:13,color:'var(--t2)'}}>{lt(selD.tipus).name}</div>
+                </div>
+                <button className="btn btn-g btn-icon btn-sm" style={{fontSize:11}} onClick={()=>setSel(null)}>✕</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+                {[
+                  {l:'Situació',v:SIT.find(s=>s.code===selD.sit)?.name},
+                  {l:'Orientació',v:ORI.find(o=>o.code===selD.ori)?.name||'—'},
+                  {l:'Planta',v:zone.planta},{l:'Pis / Zona',v:zone.pis},
+                ].map(r=>(
+                  <div key={r.l} style={{background:'var(--s2)',borderRadius:'var(--r)',padding:'8px 10px',border:'1px solid var(--bd)'}}>
+                    <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--t3)',letterSpacing:'.06em'}}>{r.l}</div>
+                    <div style={{fontWeight:600,marginTop:2,fontSize:13}}>{r.v}</div>
+                  </div>
+                ))}
+              </div>
+              {selD.obs&&(
+                <div style={{background:'var(--s2)',borderRadius:'var(--r)',padding:'10px 12px',border:'1px solid var(--bd)'}}>
+                  <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--t3)',marginBottom:4,letterSpacing:'.06em'}}>Observacions</div>
+                  <div style={{fontSize:13,lineHeight:'1.55'}}>{selD.obs}</div>
+                </div>
+              )}
+              {selD.fotos>0&&(
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--t3)',marginBottom:7,letterSpacing:'.06em'}}>Fotos ({selD.fotos})</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5}}>
+                    {Array.from({length:selD.fotos}).map((_,i)=>(
+                      <div key={i} style={{aspectRatio:'4/3',background:'var(--s3)',borderRadius:'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid var(--bd)',fontSize:18,color:'var(--t3)'}}>📷</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{display:'flex',gap:7,marginTop:'auto',paddingTop:8}}>
+                <button className="btn btn-g" style={{flex:1}} onClick={()=>setFicha({lesion:selD,mode:'edit'})}>✏️ Editar</button>
+                <button className="btn btn-acc" style={{flex:1}} onClick={()=>{setTool('select');}}>📍 Localitzar</button>
+              </div>
+            </div>
+          ):(
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+              <div style={{padding:'11px 12px 0',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+                <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--t3)'}}>Llista de lesions</span>
+                <button className="btn btn-acc btn-sm" onClick={()=>setTool('lesion')}>+ Afegir</button>
+              </div>
+              <div style={{flex:1,overflowY:'auto',padding:'7px'}}>
+                {filtered.length===0?(
+                  <div style={{padding:'28px 14px',textAlign:'center',color:'var(--t3)',fontSize:12}}>
+                    Cap lesió registrada en aquesta zona.<br/>
+                    <span style={{color:'var(--acc)',cursor:'pointer'}} onClick={()=>setTool('lesion')}>Utilitza 📍 per afegir-ne.</span>
+                  </div>
+                ):filtered.map(l=>(
+                  <div key={l.id} className={`li${sel===l.id?' sel':''}`} onClick={()=>setSel(l.id)}>
+                    <div style={{width:9,height:9,borderRadius:'50%',background:lt(l.tipus).color,flexShrink:0,marginTop:3}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                        <span style={{fontFamily:'IBM Plex Mono',fontSize:11,fontWeight:700,color:lt(l.tipus).color}}>{l.code}</span>
+                        <UrgBadge code={l.urg}/>
+                      </div>
+                      <div style={{fontSize:11,color:'var(--t2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.obs||lt(l.tipus).name}</div>
+                    </div>
+                    <span style={{fontSize:10,color:'var(--t3)',flexShrink:0}}>📷{l.fotos}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {ficha&&<Ficha lesion={ficha.lesion} allLesions={zone.lesions}
+        onSave={saveLesion} onDelete={()=>delLesion(ficha.lesion.id)} onClose={()=>setFicha(null)}/>}
+    </div>
+  );
+};
+
+/* ── Stats View ─────────────────────────────────────────────────── */
+const StatsView=({project})=>{
+  const all=project.zones.flatMap(z=>z.lesions);
+  const tot=all.length;
+  const byType=LT.map(t=>({...t,n:all.filter(l=>l.tipus===t.code).length})).filter(t=>t.n>0);
+  const byUrg=URG.map(u=>({...u,n:all.filter(l=>l.urg===u.code).length}));
+  const fotos=all.reduce((s,l)=>s+(l.fotos||0),0);
+  const Bar=({v,max,c})=>(
+    <div style={{height:6,background:'var(--s3)',borderRadius:3,flex:1,overflow:'hidden'}}>
+      <div style={{width:`${max?v/max*100:0}%`,height:'100%',background:c,borderRadius:3,transition:'width .4s'}}/>
+    </div>
+  );
+  return(
+    <div style={{flex:1,overflowY:'auto',padding:20}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:11,marginBottom:20}}>
+        {[{n:project.zones.length,l:'Zones'},{n:tot,l:'Lesions'},{n:all.filter(l=>l.urg==='U').length,l:'Urgents'},{n:fotos,l:'Fotos'}].map((s,i)=>(
+          <div key={i} className="stat-box"><div className="stat-n">{s.n}</div><div className="stat-l">{s.l}</div></div>
+        ))}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:'var(--r)',padding:16}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--t3)',marginBottom:12}}>Per tipus de lesió</div>
+          {byType.length===0&&<div style={{color:'var(--t3)',fontSize:12}}>Sense dades</div>}
+          {byType.map(t=>(
+            <div key={t.code} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <span style={{fontFamily:'IBM Plex Mono',fontSize:10,fontWeight:700,color:t.color,width:24}}>{t.code}</span>
+              <Bar v={t.n} max={tot} c={t.color}/>
+              <span style={{fontSize:12,fontWeight:700,width:20,textAlign:'right',fontFamily:'IBM Plex Mono'}}>{t.n}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:'var(--r)',padding:16}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--t3)',marginBottom:12}}>Per urgència</div>
+          {byUrg.map(u=>(
+            <div key={u.code} style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+              <span style={{fontSize:11,fontWeight:600,width:72,color:u.c}}>{u.name}</span>
+              <Bar v={u.n} max={tot} c={u.c}/>
+              <span style={{fontSize:16,fontWeight:700,fontFamily:'IBM Plex Mono',width:24,color:u.c}}>{u.n}</span>
+            </div>
+          ))}
+          <div className="sep"/>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--t3)',marginBottom:10}}>Per zona</div>
+          {project.zones.map(z=>(
+            <div key={z.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+              <span style={{fontSize:11,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--t2)'}}>{z.name}</span>
+              {z.lesions.filter(l=>l.urg==='U').length>0&&<span style={{fontSize:9,color:'#EF4444',fontWeight:700}}>{z.lesions.filter(l=>l.urg==='U').length}U</span>}
+              <span style={{fontSize:11,fontWeight:700,fontFamily:'IBM Plex Mono',width:22}}>{z.lesions.length}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── New Zone Modal ─────────────────────────────────────────────── */
+const NewZoneM=({onSave,onClose})=>{
+  const [f,sf]=useState({name:'',type:'HA',planta:'',pis:''});
+  const set=(k,v)=>sf(p=>({...p,[k]:v}));
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal fi" style={{maxWidth:440}}>
+        <div className="mhd"><h2>Nova zona / annex</h2><X onClick={onClose}/></div>
+        <div style={{display:'flex',flexDirection:'column',gap:14}}>
+          <div className="ff">
+            <label>Tipus</label>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+              {ZTYPES.map(zt=>(
+                <button key={zt.code} onClick={()=>{set('type',zt.code);set('name',zt.name);}}
+                  style={{padding:'9px 6px',borderRadius:'var(--r)',border:`1px solid ${f.type===zt.code?'var(--acc)':'var(--bd)'}`,
+                    background:f.type===zt.code?'var(--accd)':'var(--s2)',color:f.type===zt.code?'var(--acc)':'var(--t2)',
+                    cursor:'pointer',fontSize:11,fontWeight:600,display:'flex',flexDirection:'column',alignItems:'center',gap:4,transition:'all .15s'}}>
+                  <span style={{fontSize:18}}>{zt.em}</span>{zt.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="ff"><label>Nom de la zona *</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="ex: Façana Anterior, Pis 2on 1a..."/></div>
+          <div className="fr">
+            <div className="ff"><label>Planta</label><input value={f.planta} onChange={e=>set('planta',e.target.value)} placeholder="ex: Principal"/></div>
+            <div className="ff"><label>Pis / Zona</label><input value={f.pis} onChange={e=>set('pis',e.target.value)} placeholder="ex: 1a, —"/></div>
+          </div>
+        </div>
+        <div className="mft">
+          <button className="btn btn-g" onClick={onClose}>Cancel·lar</button>
+          <button className="btn btn-acc" disabled={!f.name} onClick={()=>onSave({id:uid(),elements:[],lesions:[],...f})}>Crear zona</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Export Modal ───────────────────────────────────────────────── */
+const ExportM=({project,onClose})=>{
+  const [busy,setBusy]=useState(null);
+
+  const doXLSX=()=>{
+    setBusy('xlsx');
+    const wb=XLSX.utils.book_new();
+    const summary=[['Codi Obra','Obra','Edifici','Inspector','Data'],
+      [project.codiObra,project.name,project.edifici,project.inspector,project.data]];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summary),'Resum');
+    const hdr=['Codi Lesió','Tipus','Nom Tipus','Zona','Planta','Pis','Situació','Orientació','Urgència','Fotos','Observacions'];
+    const rows=project.zones.flatMap(z=>z.lesions.map(l=>[
+      l.code,l.tipus,lt(l.tipus).name,z.name,z.planta,z.pis,
+      SIT.find(s=>s.code===l.sit)?.name,ORI.find(o=>o.code===l.ori)?.name||'—',
+      URG.find(u=>u.code===l.urg)?.name,l.fotos,l.obs
+    ]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr,...rows]),'Lesions');
+    project.zones.forEach(z=>{
+      const zHdr=[...hdr];
+      const zRows=z.lesions.map(l=>[l.code,l.tipus,lt(l.tipus).name,z.name,z.planta,z.pis,SIT.find(s=>s.code===l.sit)?.name,ORI.find(o=>o.code===l.ori)?.name||'—',URG.find(u=>u.code===l.urg)?.name,l.fotos,l.obs]);
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([zHdr,...zRows]),z.name.slice(0,28));
+    });
+    XLSX.writeFile(wb,`${project.name.replace(/[^a-zA-Z0-9]/g,'_')}_${project.codiObra}.xlsx`);
+    setBusy(null);
+  };
+
+  const doJSON=()=>{
+    setBusy('json');
+    const blob=new Blob([JSON.stringify(project,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`inspecapp_${project.codiObra}.json`;a.click();
+    setTimeout(()=>setBusy(null),800);
+  };
+
+  const doCSV=()=>{
+    setBusy('csv');
+    const rows=[['Zona','Planta','Pis','Codi','Tipus','Situació','Orientació','Urgència','Fotos','Observacions']];
+    project.zones.forEach(z=>z.lesions.forEach(l=>rows.push([z.name,z.planta,z.pis,l.code,lt(l.tipus).name,l.sit,l.ori||'',urg(l.urg).name,l.fotos,l.obs])));
+    const csv=rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`${project.codiObra}_lesions.csv`;a.click();
+    setTimeout(()=>setBusy(null),800);
+  };
+
+  const all=project.zones.flatMap(z=>z.lesions);
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal fi" style={{maxWidth:460}}>
+        <div className="mhd"><h2>Exportar informe</h2><X onClick={onClose}/></div>
+        <div style={{padding:'10px 14px',background:'var(--s2)',borderRadius:'var(--r)',border:'1px solid var(--bd)',marginBottom:16,fontSize:13}}>
+          <strong>{project.name}</strong> · <span style={{color:'var(--t2)'}}>{all.length} lesions · {project.zones.length} zones · {all.reduce((s,l)=>s+(l.fotos||0),0)} fotos</span>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:9}}>
+          {[
+            {fn:doXLSX,k:'xlsx',icon:'📊',label:'Excel (.xlsx)',desc:'Totes les fitxes per zona. Una fila per lesió. Un full per zona.'},
+            {fn:doCSV,k:'csv',icon:'📋',label:'CSV estàndard',desc:'Format simple per importar a qualsevol aplicació.'},
+            {fn:doJSON,k:'json',icon:'📦',label:'Backup JSON',desc:'Totes les dades del projecte en format reutilitzable.'},
+          ].map(o=>(
+            <div key={o.k} className="exp-opt" onClick={o.fn} style={{opacity:busy&&busy!==o.k?.45:1}}>
+              <span style={{fontSize:26}}>{busy===o.k?'⏳':o.icon}</span>
+              <div>
+                <div style={{fontWeight:600,fontSize:13}}>{busy===o.k?'Generant…':o.label}</div>
+                <div style={{fontSize:11,color:'var(--t2)'}}>{o.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:14,padding:'10px 14px',background:'var(--accd)',borderRadius:'var(--r)',border:'1px solid rgba(245,166,35,.25)',fontSize:11,color:'var(--t2)'}}>
+          💡 L'exportació PDF completa (amb croquis i fotos) requereix la versió completa de producció.
+        </div>
+        <div className="mft"><button className="btn btn-g" onClick={onClose}>Tancar</button></div>
+      </div>
+    </div>
+  );
+};
+
+/* ── New Project Modal ──────────────────────────────────────────── */
+const NewProjM=({onSave,onClose})=>{
+  const [f,sf]=useState({name:'',codiObra:'',edifici:'',inspector:'',data:new Date().toLocaleDateString('ca'),desc:''});
+  const set=(k,v)=>sf(p=>({...p,[k]:v}));
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal fi">
+        <div className="mhd"><h2>Nou projecte d'inspecció</h2><X onClick={onClose}/></div>
+        <div style={{display:'flex',flexDirection:'column',gap:13}}>
+          <div className="fr">
+            <div className="ff" style={{flex:2}}><label>Nom del projecte *</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="ex: Ramon Turró 157" autoFocus/></div>
+            <div className="ff"><label>Codi d'obra</label><input value={f.codiObra} onChange={e=>set('codiObra',e.target.value)} placeholder="ex: 15350"/></div>
+          </div>
+          <div className="ff"><label>Adreça de l'edifici *</label><input value={f.edifici} onChange={e=>set('edifici',e.target.value)} placeholder="ex: C/ Ramon Turró, 157, Barcelona"/></div>
+          <div className="fr">
+            <div className="ff"><label>Inspector</label><input value={f.inspector} onChange={e=>set('inspector',e.target.value)} placeholder="Nom de l'inspector"/></div>
+            <div className="ff"><label>Data d'inspecció</label><input value={f.data} onChange={e=>set('data',e.target.value)}/></div>
+          </div>
+          <div className="ff"><label>Descripció de l'edifici</label><textarea value={f.desc} onChange={e=>set('desc',e.target.value)} placeholder="Tipologia, nº plantes, estructura, acabats..."/></div>
+        </div>
+        <div className="mft">
+          <button className="btn btn-g" onClick={onClose}>Cancel·lar</button>
+          <button className="btn btn-acc" disabled={!f.name||!f.edifici} onClick={()=>onSave({id:uid(),zones:[],...f})}>Crear projecte</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Project View ───────────────────────────────────────────────── */
+const ProjView=({project,onUpdate,onBack})=>{
+  const [az,setAz]=useState(project.zones[0]?.id||null);
+  const [showNZ,setShowNZ]=useState(false);
+  const [showExp,setShowExp]=useState(false);
+  const [view,setView]=useState('croquis');
+
+  const zone=project.zones.find(z=>z.id===az);
+  const upZone=(z)=>onUpdate({...project,zones:project.zones.map(p=>p.id===z.id?z:p)});
+  const addZone=(z)=>{onUpdate({...project,zones:[...project.zones,z]});setAz(z.id);setShowNZ(false);};
+  const urgent=project.zones.flatMap(z=>z.lesions).filter(l=>l.urg==='U').length;
+
+  return(
+    <div style={{height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* Top bar */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px',background:'var(--s1)',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
+        <button className="btn btn-g btn-sm" onClick={onBack}>← Inici</button>
+        <div style={{width:1,height:20,background:'var(--bd)'}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:'Syne',fontSize:15,fontWeight:800,lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.name}</div>
+          <div style={{fontSize:11,color:'var(--t2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.edifici} · <span className="mono">{project.codiObra}</span></div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+          {urgent>0&&<span className="tag" style={{background:'rgba(239,68,68,.15)',color:'#EF4444'}}>⚠ {urgent} urgents</span>}
+          <button className={`btn btn-sm ${view==='croquis'?'btn-acc':'btn-g'}`} onClick={()=>setView('croquis')}>🗺 Croquis</button>
+          <button className={`btn btn-sm ${view==='stats'?'btn-acc':'btn-g'}`} onClick={()=>setView('stats')}>📊 Stats</button>
+          <button className="btn btn-g btn-sm" onClick={()=>setShowExp(true)}>📤 Exportar</button>
+        </div>
+      </div>
+
+      {view==='stats'?<StatsView project={project}/>:<>
+        {/* Zone tabs */}
+        <div className="zone-tabs">
+          {project.zones.map(z=>(
+            <div key={z.id} className={`ztab${az===z.id?' on':''}`} onClick={()=>setAz(z.id)}>
+              {z.name}
+              {z.lesions.filter(l=>l.urg==='U').length>0&&(
+                <span style={{marginLeft:5,background:'#EF4444',color:'#fff',borderRadius:'50%',fontSize:8,fontWeight:800,display:'inline-block',width:13,height:13,lineHeight:'13px',textAlign:'center'}}>
+                  {z.lesions.filter(l=>l.urg==='U').length}
+                </span>
+              )}
+            </div>
+          ))}
+          <div className="ztab-add" onClick={()=>setShowNZ(true)}>＋</div>
+        </div>
+        {/* Zone content */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {zone?<ZoneView key={zone.id} zone={zone} onUpdate={upZone}/>:(
+            <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,color:'var(--t3)'}}>
+              <span style={{fontSize:48}}>🗺</span>
+              <div style={{fontSize:15,fontWeight:600,color:'var(--t2)'}}>Cap zona creada</div>
+              <button className="btn btn-acc" onClick={()=>setShowNZ(true)}>+ Afegir primera zona</button>
+            </div>
+          )}
+        </div>
+      </>}
+
+      {showNZ&&<NewZoneM onSave={addZone} onClose={()=>setShowNZ(false)}/>}
+      {showExp&&<ExportM project={project} onClose={()=>setShowExp(false)}/>}
+    </div>
+  );
+};
+
+/* ── Dashboard ──────────────────────────────────────────────────── */
+const Dashboard=({projects,onOpen,onCreate})=>(
+  <div style={{height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{padding:'18px 24px',background:'var(--s1)',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',maxWidth:1100,margin:'0 auto',width:'100%'}}>
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:5}}>
+            <div style={{width:30,height:30,background:'var(--acc)',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:'#000',fontFamily:'Syne'}}>I</div>
+            <h1 style={{letterSpacing:'-.01em'}}>InspecApp</h1>
+            <span className="tag" style={{background:'var(--accd)',color:'var(--acc)'}}>BETA</span>
+          </div>
+          <p style={{fontSize:13,color:'var(--t2)'}}>Gestió d'inspeccions d'edificis · Nomenclatura, croquis i exportació integrats</p>
+        </div>
+        <button className="btn btn-acc" style={{fontSize:14,padding:'9px 18px'}} onClick={onCreate}>+ Nou projecte</button>
+      </div>
+    </div>
+    <div style={{flex:1,overflowY:'auto',padding:'24px',maxWidth:1100,margin:'0 auto',width:'100%'}}>
+      {projects.length===0?(
+        <div style={{maxWidth:400,margin:'80px auto',textAlign:'center'}}>
+          <div style={{fontSize:60,marginBottom:14}}>🏢</div>
+          <h2 style={{fontFamily:'Syne',fontSize:20,marginBottom:8}}>Comença la primera inspecció</h2>
+          <p style={{color:'var(--t2)',marginBottom:22,fontSize:14}}>Crea un projecte per a cada edifici. Afegeix zones, croquis, marca les lesions i exporta l'informe.</p>
+          <button className="btn btn-acc" style={{fontSize:14,padding:'10px 22px'}} onClick={onCreate}>Crear primer projecte</button>
+        </div>
+      ):(
+        <>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',color:'var(--t3)',marginBottom:14}}>Projectes recents ({projects.length})</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(270px,1fr))',gap:14}}>
+            {projects.map(p=>{
+              const all=p.zones.flatMap(z=>z.lesions);
+              const urg=all.filter(l=>l.urg==='U').length;
+              return(
+                <div key={p.id} className="proj-card fi" onClick={()=>onOpen(p.id)}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <h2 style={{fontFamily:'Syne',fontSize:14,marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</h2>
+                      <div style={{fontSize:11,color:'var(--t2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.edifici}</div>
+                    </div>
+                    <span className="mono" style={{fontSize:10,color:'var(--t3)',marginLeft:8,flexShrink:0}}>{p.codiObra}</span>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7,marginBottom:12}}>
+                    {[{n:p.zones.length,l:'Zones'},{n:all.length,l:'Lesions'},{n:urg,l:'Urgents',c:'#EF4444'}].map((s,i)=>(
+                      <div key={i} style={{background:'var(--s2)',borderRadius:4,padding:'6px 7px',textAlign:'center'}}>
+                        <div style={{fontSize:18,fontWeight:700,fontFamily:'IBM Plex Mono',color:s.c||'var(--acc)'}}>{s.n}</div>
+                        <div style={{fontSize:9,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.06em'}}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,color:'var(--t3)'}}>
+                    <span>📅 {p.data}</span><span>👤 {p.inspector}</span>
+                  </div>
+                  {urg>0&&<div style={{marginTop:9,padding:'5px 9px',background:'rgba(239,68,68,.08)',borderRadius:4,border:'1px solid rgba(239,68,68,.18)',fontSize:11,color:'#EF4444',fontWeight:600}}>
+                    ⚠ {urg} lesions urgents
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+);
+
+/* ── App Root ───────────────────────────────────────────────────── */
+const App=()=>{
+  const [projects,setProjects]=useState([DEMO]);
+  const [openId,setOpenId]=useState(null);
+  const [showNew,setShowNew]=useState(false);
+  const curr=projects.find(p=>p.id===openId);
+  const upProj=(p)=>setProjects(prev=>prev.map(x=>x.id===p.id?p:x));
+  const addProj=(p)=>{setProjects(prev=>[...prev,p]);setShowNew(false);setOpenId(p.id);};
+
+  return(
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {openId&&curr
+        ?<ProjView project={curr} onUpdate={upProj} onBack={()=>setOpenId(null)}/>
+        :<Dashboard projects={projects} onOpen={setOpenId} onCreate={()=>setShowNew(true)}/>}
+      {showNew&&<NewProjM onSave={addProj} onClose={()=>setShowNew(false)}/>}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
