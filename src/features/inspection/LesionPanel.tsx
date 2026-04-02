@@ -49,17 +49,17 @@ export function LesionPanel({ selectedId, onSelect, onEditLesion, onAddLesion }:
 
   return (
     <div className="h-full flex flex-col overflow-hidden border-t lg:border-t-0 lg:border-l border-border bg-s2/45">
-      <div className="shrink-0 border-b border-border bg-white/90 px-5 py-5 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-4">
+      <div className="shrink-0 border-b border-border bg-white/90 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-t3">Panel de zona</div>
-            <div className="mt-1 text-2xl font-title text-text">
+            <div className="text-xs font-medium text-t3">Panel de zona</div>
+            <div className="mt-0.5 text-base font-semibold text-text">
               Lesiones <span className="font-mono text-t2">({lesions.length})</span>
             </div>
           </div>
           <button
             onClick={onAddLesion}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition hover:bg-accent-h"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 text-xs font-medium text-white transition hover:bg-accent-h"
           >
             <MapPinPlus className="h-4 w-4" strokeWidth={2.4} />
             Nueva lesion
@@ -95,7 +95,7 @@ export function LesionPanel({ selectedId, onSelect, onEditLesion, onAddLesion }:
       <div className="flex-1 overflow-y-auto px-4 py-5">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-s2 text-t2">
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-s2 text-t2">
               <MapPin className="h-6 w-6" strokeWidth={2.1} />
             </div>
             <div className="text-base font-semibold text-text mb-1.5">
@@ -140,18 +140,18 @@ function LesionListItem({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+      className={`w-full rounded-lg border bg-white p-3 text-left transition hover:shadow-sm ${
         isSelected
-          ? 'border-accent ring-2 ring-accent/20'
+          ? 'border-accent ring-1 ring-accent/20'
           : 'border-border hover:border-accent/35'
       }`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="h-3.5 w-3.5 rounded-full shrink-0" style={{ background: color }} />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: color }} />
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-bold" style={{ color }}>{l.code}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-sm font-semibold" style={{ color }}>{l.code}</span>
               <UrgencyBadge code={l.urgency} />
             </div>
             <div className="mt-1 truncate text-sm text-t2">{l.obs || typeName}</div>
@@ -187,11 +187,11 @@ function LesionDetail({
 
   return (
     <div className="h-full flex flex-col overflow-hidden border-t lg:border-t-0 lg:border-l border-border bg-s2/45">
-      <div className="shrink-0 border-b border-border bg-white/90 px-5 py-5 backdrop-blur-sm">
-        <div className="flex items-start justify-between mb-2.5 gap-3">
+      <div className="shrink-0 border-b border-border bg-white/90 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-start justify-between mb-2 gap-3">
           <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="font-mono text-[22px] font-bold" style={{ color }}>{lesion.code}</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-base font-bold" style={{ color }}>{lesion.code}</span>
               <UrgencyBadge code={lesion.urgency} />
             </div>
             <div className="text-[14px] text-t2">{typeName}</div>

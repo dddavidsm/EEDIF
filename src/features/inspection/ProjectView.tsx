@@ -61,7 +61,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
               <Building2 className="h-[18px] w-[18px]" strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
-              <div className="font-title text-[17px] lg:text-[20px] leading-tight truncate">{project.name}</div>
+              <div className="text-sm lg:text-base font-semibold leading-tight truncate">{project.name}</div>
               <div className="text-[12px] lg:text-[13px] text-t2 truncate">
                 {project.address} <span className="mx-1">•</span>
                 <span className="font-mono text-t3">{project.workCode}</span>
@@ -162,7 +162,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-[var(--radius-lg)] bg-s2 border border-border flex items-center justify-center text-t2">
                     <Building2 className="h-7 w-7" strokeWidth={1.8} />
                   </div>
-                  <h3 className="font-title text-[20px] mb-2">Ninguna zona creada</h3>
+                  <h3 className="text-base font-semibold mb-2">Ninguna zona creada</h3>
                   <p className="text-[14px] text-t2 mb-5">Crea una zona para empezar a dibujar el plano y registrar lesiones.</p>
                   <button onClick={() => setShowNewZone(true)} className="app-btn app-btn-accent mx-auto">
                     <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -232,7 +232,7 @@ function ZoneContent({
               <button
                 key={tb.key}
                 onClick={() => setTool(tb.key)}
-                className={`inline-flex h-14 min-w-[148px] flex-col items-center justify-center gap-1 rounded-2xl border px-4 text-center transition-all ${
+                className={`inline-flex h-11 min-w-[120px] flex-col items-center justify-center gap-0.5 rounded-lg border px-3 text-center transition-all ${
                   tool === tb.key
                     ? 'border-accent bg-accent text-white shadow-md shadow-blue-600/25'
                     : 'border-border bg-s2 text-t2 hover:border-accent/30 hover:bg-s3 hover:text-text'

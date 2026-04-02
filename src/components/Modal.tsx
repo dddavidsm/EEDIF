@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 560 }
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-title text-[20px] leading-tight font-bold">{title}</h2>
+          <h2 className="text-base font-semibold leading-tight">{title}</h2>
           <button
             onClick={onClose}
             className="inline-flex items-center justify-center p-2.5 aspect-square rounded-[var(--radius)] bg-transparent text-t2 border border-border hover:bg-s2 hover:text-text cursor-pointer"

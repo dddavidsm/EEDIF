@@ -61,7 +61,7 @@ export function QuickTypePicker({ x, y, onSelect, onCancel }: Props) {
             <button
               key={lt.code}
               onClick={() => onSelect(lt.code)}
-              className="flex min-h-14 items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-semibold text-slate-100 transition-all hover:-translate-y-0.5"
+              className="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium text-slate-100 transition-all hover:-translate-y-0.5"
               style={{
                 borderColor: `${lt.color}99`,
                 background: `linear-gradient(180deg, ${lt.color}28, rgba(15,23,42,0.68))`,

@@ -36,7 +36,7 @@ export function StatsPanel() {
       <div className="max-w-[900px] mx-auto">
         {/* Title */}
         <div className="mb-6">
-          <h2 className="font-title text-lg font-bold mb-1">Estadisticas del proyecto</h2>
+          <h2 className="text-base font-semibold mb-1">Estadisticas del proyecto</h2>
           <p className="text-[13px] text-t2">{project.name} &middot; {project.workCode}</p>
         </div>
 

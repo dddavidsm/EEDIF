@@ -148,43 +148,42 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[230] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[230] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={event => {
         if (event.target === event.currentTarget && !saving) {
           onClose()
         }
       }}
     >
-      <div className="w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-2xl border border-slate-200/20 bg-[linear-gradient(180deg,_rgba(255,255,255,0.95),_rgba(247,250,255,0.94))] shadow-xl shadow-black/30">
-        <header className="border-b border-border/80 px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
+      <div className="w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-xl border border-border/40 bg-white shadow-xl">
+        <header className="border-b border-border/60 px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-t3">Ficha de lesion</p>
-              <h2 className="mt-2 font-title text-3xl leading-tight text-text">
+              <h2 className="text-base font-semibold text-text">
                 {isNew ? 'Agregar nueva lesion' : 'Editar lesion'}
               </h2>
-              <p className="mt-2 text-sm text-t2">
-                Registra tipo, situacion y observaciones con controles amplios para trabajo en campo.
+              <p className="mt-0.5 text-xs text-t2">
+                Registra tipo, situacion y observaciones.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-t2 shadow-sm transition hover:border-accent/35 hover:text-accent disabled:opacity-50"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border text-t2 transition hover:border-accent/35 hover:text-accent disabled:opacity-50"
               aria-label="Cerrar ficha de lesion"
             >
-              <X className="h-5 w-5" strokeWidth={2.4} />
+              <X className="h-3.5 w-3.5" strokeWidth={2.4} />
             </button>
           </div>
         </header>
 
-        <div className="max-h-[calc(92vh-186px)] overflow-y-auto px-6 py-6">
-          <div className="space-y-6">
-            <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-4">
+        <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-5 py-4">
+          <div className="space-y-4">
+            <section className="rounded-xl border border-border bg-white p-4">
+              <div className="flex items-center gap-3">
                 <span
-                  className="inline-flex min-w-28 items-center justify-center rounded-xl border px-4 py-2 font-mono text-2xl font-bold"
+                  className="inline-flex min-w-20 items-center justify-center rounded-lg border px-3 py-1.5 font-mono text-base font-bold"
                   style={{ color, background: `${color}18`, borderColor: `${color}50` }}
                 >
                   {code}
@@ -196,9 +195,9 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-t3">Tipo de lesion</div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+            <section className="rounded-xl border border-border bg-white p-4">
+              <div className="mb-2 text-xs font-medium text-t3">Tipo de lesion</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
                 {LESION_TYPES.map(type => {
                   const active = form.tipus === type.code
                   return (
@@ -206,7 +205,7 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
                       key={type.code}
                       type="button"
                       onClick={() => setField('tipus', type.code)}
-                      className={`flex h-14 flex-col items-center justify-center rounded-xl border px-2 text-center transition ${
+                      className={`flex h-11 flex-col items-center justify-center rounded-lg border px-2 text-center transition ${
                         active
                           ? 'shadow-sm'
                           : 'bg-s2 text-t2 hover:border-accent/30 hover:text-text'
@@ -221,8 +220,8 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-              <div className="grid gap-6 md:grid-cols-2">
+            <section className="rounded-xl border border-border bg-white p-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <ToggleGigante
                   label="Situacion"
                   value={form.sit}
@@ -238,13 +237,13 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
                     onChange={value => setField('ori', value as OrientationCode)}
                   />
                 ) : (
-                  <div className="rounded-xl border border-dashed border-border bg-s2 px-4 py-4 text-sm text-t2">
+                  <div className="rounded-lg border border-dashed border-border bg-s2 px-3 py-3 text-xs text-t2">
                     Este tipo de lesion no requiere orientacion.
                   </div>
                 )}
               </div>
 
-              <div className="mt-6">
+              <div className="mt-4">
                 <ToggleGigante
                   label="Urgencia"
                   value={form.urgency}
@@ -254,32 +253,32 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-t3">
+            <section className="rounded-xl border border-border bg-white p-4">
+              <label className="mb-1.5 block text-xs font-medium text-t3">
                 Observaciones
               </label>
               <textarea
                 value={form.obs}
                 onChange={event => setField('obs', event.target.value)}
                 placeholder="Describe dimensiones, posible causa y cualquier hallazgo relevante"
-                className="min-h-32 w-full rounded-xl border border-border bg-s2 px-4 py-3 text-[15px] text-text outline-none transition focus:border-accent"
+                className="min-h-24 w-full rounded-lg border border-border bg-s2 px-3 py-2 text-sm text-text outline-none transition focus:border-accent"
               />
             </section>
 
-            <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+            <section className="rounded-xl border border-border bg-white p-4">
               {!isNew && lesion ? (
                 <PhotoManager lesionId={lesion.id} photos={photos} enabled />
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-t3">
-                    <Camera className="h-4 w-4" strokeWidth={2.3} />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-t3">
+                    <Camera className="h-3.5 w-3.5" strokeWidth={2.3} />
                     Fotos de lesion
                   </div>
-                  <div className="border-2 border-dashed border-slate-600 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-800/30 text-center">
-                    <UploadCloud className="h-12 w-12 text-slate-400" strokeWidth={1.9} />
-                    <p className="mt-3 text-base font-semibold text-slate-200">Toca para añadir fotos de la lesion</p>
-                    <p className="mt-1 text-sm text-slate-300/80">
-                      Guarda primero la ficha para habilitar la carga de imagenes.
+                  <div className="border border-dashed border-border rounded-lg p-5 flex flex-col items-center justify-center bg-s2 text-center">
+                    <UploadCloud className="h-8 w-8 text-t3" strokeWidth={1.9} />
+                    <p className="mt-2 text-sm font-medium text-text">Toca para añadir fotos</p>
+                    <p className="mt-0.5 text-xs text-t2">
+                      Guarda primero la ficha para habilitar la carga.
                     </p>
                   </div>
                 </div>
@@ -288,39 +287,38 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
           </div>
         </div>
 
-        <footer className="border-t border-border/80 bg-white/90 px-6 py-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="border-t border-border/60 bg-white px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3">
             <div>
               {!isNew && (
                 <button
                   type="button"
                   onClick={handleDelete}
                   disabled={saving}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-5 text-sm font-semibold text-danger transition hover:bg-danger/20 disabled:opacity-50"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-danger/30 bg-danger/10 px-3 text-xs font-medium text-danger transition hover:bg-danger/20 disabled:opacity-50"
                 >
-                  <Trash2 className="h-4 w-4" strokeWidth={2.2} />
-                  Eliminar lesion
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+                  Eliminar
                 </button>
               )}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="inline-flex h-12 min-w-40 items-center justify-center gap-2 rounded-xl border border-border bg-white px-5 text-sm font-semibold text-text shadow-sm transition hover:border-accent/35 hover:text-accent disabled:opacity-50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-text transition hover:border-accent/35 hover:text-accent disabled:opacity-50"
               >
-                <X className="h-4 w-4" strokeWidth={2.3} />
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={saving}
-                className="inline-flex h-12 min-w-56 items-center justify-center gap-2 rounded-xl bg-accent px-6 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition hover:bg-accent-h disabled:opacity-50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-4 text-xs font-medium text-white transition hover:bg-accent-h disabled:opacity-50"
               >
-                <Save className="h-4 w-4" strokeWidth={2.3} />
+                <Save className="h-3.5 w-3.5" strokeWidth={2} />
                 {saving ? 'Guardando...' : isNew ? 'Agregar lesion' : 'Guardar cambios'}
               </button>
             </div>
@@ -344,17 +342,17 @@ function ToggleGigante({
 }) {
   return (
     <div>
-      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-t3">{label}</div>
-      <div className="flex gap-3">
+      <div className="mb-2 text-xs font-medium text-t3">{label}</div>
+      <div className="flex gap-2">
         {options.map(option => (
           <button
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`flex h-12 flex-1 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
+            className={`flex h-9 flex-1 items-center justify-center rounded-lg border px-2 text-xs font-medium transition ${
               value === option.value
-                ? 'border-accent bg-accent text-white shadow-md shadow-blue-600/20'
-                : 'border-border bg-s2 text-t2 hover:border-accent/30 hover:bg-s3 hover:text-text'
+                ? 'border-accent bg-accent text-white'
+                : 'border-border bg-s2 text-t2 hover:border-accent/30 hover:text-text'
             }`}
           >
             {option.label}

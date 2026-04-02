@@ -121,7 +121,7 @@ export function ExportModal({ open, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} title="Exportaciones profesionales" maxWidth={620}>
       <div className="relative flex flex-col gap-5">
-        <div className="rounded-2xl border border-border bg-s2 px-4 py-4">
+        <div className="rounded-lg border border-border bg-s2 px-3 py-3">
           <div className="flex flex-wrap items-center gap-2 text-sm text-t2">
             <span className="font-semibold text-text">{project.name}</span>
             <span>·</span>
@@ -140,10 +140,10 @@ export function ExportModal({ open, onClose }: Props) {
                 type="button"
                 onClick={() => handleExport(option.key)}
                 disabled={exporting !== null}
-                className="flex items-start gap-4 rounded-2xl border border-border bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-accent/35 disabled:cursor-wait disabled:opacity-60"
+                className="flex items-start gap-3 rounded-lg border border-border bg-white px-3 py-3 text-left transition hover:border-accent/35 disabled:cursor-wait disabled:opacity-60"
               >
-                <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${option.accent}`}>
-                  <Icon className="h-5 w-5" strokeWidth={2.2} />
+                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${option.accent}`}>
+                  <Icon className="h-4 w-4" strokeWidth={2} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-text">{option.title}</span>

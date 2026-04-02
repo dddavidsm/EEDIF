@@ -47,7 +47,7 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
   background-color: var(--color-bg);
   color: var(--color-text);
@@ -74,7 +74,7 @@ html, body, #root {
 }
 
 /* ─── Utilidades tipograficas ───────────────────────────────────────────────── */
-.font-title { font-family: var(--font-title); font-weight: 800; letter-spacing: -0.01em; }
+.font-title { font-family: var(--font-title); font-weight: 700; letter-spacing: -0.01em; }
 .font-mono  { font-family: var(--font-mono); }
 
 /* ─── Label estándar ───────────────────────────────────────────────────────── */
