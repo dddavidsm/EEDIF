@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { db, getAllProjects, getZonesByProject, getLesionsByZone, getElementsByZone, deleteProjectCascade } from '@/db/db'
+import { db, getAllProjects, getZonesByProject, getLesionsByZone, getElementsByZone, getPhotosByLesion, deleteProjectCascade } from '@/db/db'
 import type { Project, Zone, CanvasElement, Lesion, Photo } from '@/types'
 
 // ─── Tipat de l'estat ────────────────────────────────────────────────────────
@@ -17,6 +17,8 @@ interface ProjectState {
   canvasElements: CanvasElement[]
   /** Lesions de la zona activa */
   lesions: Lesion[]
+  /** Fotos de la lesió seleccionada */
+  photos: Photo[]
   /** Estat de càrrega global */
   loading: boolean
   /** Missatge d'error (si n'hi ha) */
@@ -48,6 +50,7 @@ interface ProjectActions {
   deleteLesion: (id: string) => Promise<void>
 
   // ── Fotos ──────────────────────────────────────────────────────
+  loadPhotos: (lesionId: string) => Promise<void>
   addPhoto: (photo: Photo) => Promise<void>
   deletePhoto: (id: string) => Promise<void>
 }
@@ -74,6 +77,7 @@ export const useProjectStore = create<Store>((set, get) => ({
   activeZoneId: null,
   canvasElements: [],
   lesions: [],
+  photos: [],
   loading: false,
   error: null,
 
@@ -234,6 +238,11 @@ export const useProjectStore = create<Store>((set, get) => ({
 
   // ── Fotos ──────────────────────────────────────────────────────
 
+  loadPhotos: async (lesionId) => {
+    const photos = await getPhotosByLesion(lesionId)
+    set({ photos })
+  },
+
   addPhoto: async (photo) => {
     await db.photos.add(photo)
     // Afegim photoId a la lesió corresponent
@@ -245,6 +254,7 @@ export const useProjectStore = create<Store>((set, get) => ({
         lesions: s.lesions.map(l =>
           l.id === photo.lesionId ? { ...l, photoIds, updatedAt: now() } : l
         ),
+        photos: [...s.photos, photo],
       }))
     }
   },
@@ -261,6 +271,7 @@ export const useProjectStore = create<Store>((set, get) => ({
         lesions: s.lesions.map(l =>
           l.id === photo.lesionId ? { ...l, photoIds, updatedAt: now() } : l
         ),
+        photos: s.photos.filter(p => p.id !== id),
       }))
     }
   },

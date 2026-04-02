@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useProjectStore, selectActiveProject } from '@/store/useProjectStore'
 import { NewZoneModal } from '@/features/inspection/NewZoneModal'
+import { LesionModal } from '@/features/inspection/LesionModal'
+import { LesionPanel } from '@/features/inspection/LesionPanel'
 import { SketchCanvas, type CanvasTool } from '@/features/inspection/canvas/SketchCanvas'
 import { Button } from '@/components/Button'
+import type { Lesion } from '@/types'
 
 interface ProjectViewProps {
   onBack: () => void
@@ -19,6 +22,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
   const [view, setView] = useState<'croquis' | 'stats'>('croquis')
   const [tool, setTool] = useState<CanvasTool>('select')
   const [selectedLesionId, setSelectedLesionId] = useState<string | null>(null)
+  const [lesionModal, setLesionModal] = useState<{ open: boolean; lesion?: Lesion | null }>({ open: false })
 
   const activeZone = zones.find(z => z.id === activeZoneId) ?? null
   const urgentCount = lesions.filter(l => l.urgency === 'U').length
@@ -97,6 +101,8 @@ export function ProjectView({ onBack }: ProjectViewProps) {
                 setTool={setTool}
                 selectedLesionId={selectedLesionId}
                 onSelectLesion={setSelectedLesionId}
+                onEditLesion={(l) => setLesionModal({ open: true, lesion: l })}
+                onAddLesion={() => { setTool('lesion') }}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center flex-col gap-3 text-t3">
@@ -112,6 +118,11 @@ export function ProjectView({ onBack }: ProjectViewProps) {
       )}
 
       <NewZoneModal open={showNewZone} onClose={() => setShowNewZone(false)} />
+      <LesionModal
+        open={lesionModal.open}
+        onClose={() => setLesionModal({ open: false })}
+        lesion={lesionModal.lesion}
+      />
     </div>
   )
 }
@@ -162,12 +173,16 @@ function ZoneContent({
   setTool,
   selectedLesionId,
   onSelectLesion,
+  onEditLesion,
+  onAddLesion,
 }: {
   zone: { id: string; name: string; floor: string; unit: string; type: string }
   tool: CanvasTool
   setTool: (t: CanvasTool) => void
   selectedLesionId: string | null
   onSelectLesion: (id: string | null) => void
+  onEditLesion: (l: Lesion) => void
+  onAddLesion: () => void
 }) {
   const lesions = useProjectStore(s => s.lesions)
   const canvasElements = useProjectStore(s => s.canvasElements)
@@ -226,41 +241,13 @@ function ZoneContent({
         </div>
       </div>
 
-      {/* Panel derecho: Lista de lesiones (stub) */}
-      <div className="flex-1 flex flex-col overflow-hidden border-l border-border bg-s1">
-        <div className="px-3 py-2.5 flex justify-between items-center shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-t3">
-            Lista de lesiones
-          </span>
-          <Button variant="accent" size="sm">+ Agregar</Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-[7px]">
-          {lesions.length === 0 ? (
-            <div className="py-7 px-3.5 text-center text-t3 text-xs">
-              Ninguna lesion registrada en esta zona.<br />
-              <span className="text-accent cursor-pointer">Usa 📍 para agregar una.</span>
-            </div>
-          ) : (
-            lesions.map(l => (
-              <div
-                key={l.id}
-                className="flex items-start gap-2 px-2.5 py-2 rounded-[var(--radius)] cursor-pointer border border-transparent transition-all hover:bg-s2 hover:border-border"
-              >
-                <div
-                  className="w-[9px] h-[9px] rounded-full shrink-0 mt-[3px]"
-                  style={{ background: '#F97316' }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="font-mono text-[11px] font-bold text-accent">{l.code}</span>
-                  </div>
-                  <div className="text-[11px] text-t2 truncate">{l.obs || 'Sin observaciones'}</div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      {/* Panel derecho: Lesiones */}
+      <LesionPanel
+        selectedId={selectedLesionId}
+        onSelect={onSelectLesion}
+        onEditLesion={onEditLesion}
+        onAddLesion={onAddLesion}
+      />
     </div>
   )
 }
