@@ -118,7 +118,6 @@ export function ProjectView({ onBack }: ProjectViewProps) {
           <div className="flex-1 flex flex-col overflow-hidden">
             {activeZone ? (
               <ZoneContent
-                zone={activeZone}
                 tool={tool}
                 setTool={setTool}
                 selectedLesionId={selectedLesionId}
@@ -163,7 +162,6 @@ export function ProjectView({ onBack }: ProjectViewProps) {
 // ─── Zone content ─────────────────────────────────────────────────────────────
 
 function ZoneContent({
-  zone,
   tool,
   setTool,
   selectedLesionId,
@@ -171,7 +169,6 @@ function ZoneContent({
   onEditLesion,
   onAddLesion,
 }: {
-  zone: { id: string; name: string; floor: string; unit: string; type: string }
   tool: CanvasTool
   setTool: (t: CanvasTool) => void
   selectedLesionId: string | null

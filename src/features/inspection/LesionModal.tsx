@@ -9,7 +9,7 @@ import {
   LESION_TYPES, SITUATIONS, ORIENTATIONS, URGENCY_LEVELS,
 } from '@/types'
 import type {
-  LesionTypeCode, SituationCode, OrientationCode, UrgencyCode, Lesion, Photo,
+  LesionTypeCode, SituationCode, OrientationCode, UrgencyCode, Lesion,
 } from '@/types'
 import { generateLesionCode, getLesionColor, newId } from '@/utils/codeGenerator'
 

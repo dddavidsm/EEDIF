@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Modal } from '@/components/Modal'
-import { Button } from '@/components/Button'
 import { exportXLSX, exportCSV, exportJSON, exportPDF, exportZIP } from '@/utils/exporters'
 import { useProjectStore, selectActiveProject } from '@/store/useProjectStore'
 

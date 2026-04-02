@@ -169,7 +169,7 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
 
   // ─── Mouse move (update rect preview) ──────────────────────────────────
 
-  const onMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+  const onMouseMove = useCallback((_e: Konva.KonvaEventObject<MouseEvent>) => {
     if (tool === 'rect' && draw) {
       const p = toCanvas()
       setDraw(prev => prev ? { ...prev, w: p.x - prev.x, h: p.y - prev.y } : null)
@@ -348,7 +348,6 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
               key={l.id}
               l={l}
               isSelected={selectedLesionId === l.id}
-              scale={scale}
               onSelect={() => onSelectLesion(l.id)}
             />
           ))}
@@ -484,12 +483,10 @@ function GridShape({
 function LesionPin({
   l,
   isSelected,
-  scale,
   onSelect,
 }: {
   l: { id: string; x: number; y: number; code: string; tipus: string; obs: string }
   isSelected: boolean
-  scale: number
   onSelect: () => void
 }) {
   const color = getLesionColor(l.tipus as LesionTypeCode)

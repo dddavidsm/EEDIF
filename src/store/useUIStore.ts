@@ -8,7 +8,7 @@ interface UIState {
 }
 
 interface UIActions {
-  showToast: (message: string, type?: UIState['toast'] extends null ? never : UIState['toast']['type']) => void
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void
   dismissToast: () => void
 }
 
