@@ -127,88 +127,79 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
       open={open}
       onClose={onClose}
       title={isNew ? 'Agregar nueva lesion' : 'Editar lesion'}
-      maxWidth={520}
+      maxWidth={540}
       footer={
         <div className="flex w-full items-center">
           {!isNew && (
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" size="md" onClick={handleDelete}>
               Eliminar
             </Button>
           )}
           <div className="flex-1" />
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-            <Button variant="accent" onClick={handleSubmit}>
+            <Button variant="ghost" size="md" onClick={onClose}>Cancelar</Button>
+            <Button variant="accent" size="md" onClick={handleSubmit}>
               {isNew ? 'Agregar lesion' : 'Guardar cambios'}
             </Button>
           </div>
         </div>
       }
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         {/* ── Code preview ──────────────────────────────────── */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 p-3.5 bg-s2 rounded-[var(--radius)] border border-border">
           <span
-            className="font-mono text-[18px] font-bold px-3 py-1 rounded-[var(--radius)]"
-            style={{ color, background: color + '18' }}
+            className="font-mono text-[20px] font-bold px-3.5 py-1.5 rounded-[var(--radius)] border"
+            style={{ color, background: color + '18', borderColor: color + '44' }}
           >
             {code}
           </span>
-          <span className="text-[11px] text-t3">codigo autogenerado</span>
+          <div>
+            <div className="text-[12px] font-semibold text-text">{lesionType.name}</div>
+            <div className="text-[11px] text-t3 mt-0.5">codigo autogenerado</div>
+          </div>
         </div>
 
         {/* ── Type selector (grid 5 cols) ───────────────────── */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
-            Tipo de lesion
-          </label>
+        <div className="flex flex-col gap-2">
+          <label className="field-label">Tipo de lesion</label>
           <div className="grid grid-cols-5 gap-1.5">
             {LESION_TYPES.map(lt => (
               <button
                 key={lt.code}
                 type="button"
                 onClick={() => set('tipus', lt.code)}
-                className={`
-                  flex flex-col items-center gap-0.5 py-2 px-1 rounded-[var(--radius)]
-                  text-[10px] font-semibold cursor-pointer transition-all duration-100 border
-                  ${form.tipus === lt.code
-                    ? 'border-current'
-                    : 'border-border bg-s2 hover:bg-s3'}
-                `}
+                className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-[var(--radius)] text-[10px] font-semibold cursor-pointer transition-all duration-100 border"
                 style={form.tipus === lt.code
-                  ? { borderColor: lt.color, background: lt.color + '18', color: lt.color }
-                  : { color: 'var(--color-t2)' }}
+                  ? { borderColor: lt.color, background: lt.color + '1A', color: lt.color }
+                  : { borderColor: 'var(--color-border)', background: 'var(--color-s2)', color: 'var(--color-t2)' }}
               >
-                <span className="font-mono text-[11px] font-bold">{lt.code}</span>
-                <span className="text-[8px] leading-tight text-center truncate w-full">{lt.name}</span>
+                <span className="font-mono text-[12px] font-bold">{lt.code}</span>
+                <span className="text-[8px] leading-tight text-center line-clamp-2 px-1">
+                  {lt.name.split(' ')[0]}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Situation ─────────────────────────────────────── */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
-            Situacion
-          </label>
-          <Toggle options={SITUATIONS} value={form.sit} onChange={v => set('sit', v)} />
+        {/* ── Situation + Orientation (side by side when possible) ─── */}
+        <div className={`grid gap-4 ${hasOri ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="flex flex-col gap-2">
+            <label className="field-label">Situacion</label>
+            <Toggle options={SITUATIONS} value={form.sit} onChange={v => set('sit', v)} />
+          </div>
+          {hasOri && (
+            <div className="flex flex-col gap-2">
+              <label className="field-label">Orientacion</label>
+              <Toggle options={ORIENTATIONS} value={form.ori} onChange={v => set('ori', v)} />
+            </div>
+          )}
         </div>
 
-        {/* ── Orientation (conditional) ──────────────────────── */}
-        {hasOri && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
-              Orientacion
-            </label>
-            <Toggle options={ORIENTATIONS} value={form.ori} onChange={v => set('ori', v)} />
-          </div>
-        )}
-
         {/* ── Urgency ───────────────────────────────────────── */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-semibold text-t2 tracking-wider uppercase">
-            Urgencia
-          </label>
+        <div className="flex flex-col gap-2">
+          <label className="field-label">Urgencia</label>
           <Toggle options={URGENCY_LEVELS} value={form.urgency} onChange={v => set('urgency', v)} />
         </div>
 
@@ -217,7 +208,8 @@ export function LesionModal({ open, onClose, lesion, newPos }: Props) {
           label="Observaciones"
           value={form.obs}
           onChange={e => set('obs', e.target.value)}
-          placeholder="Descripcion detallada de la lesion, dimensiones estimadas, posible causa..."
+          placeholder="Descripcion detallada, dimensiones estimadas, posible causa..."
+          rows={3}
         />
 
         {/* ── Photos (only in edit mode) ────────────────────── */}

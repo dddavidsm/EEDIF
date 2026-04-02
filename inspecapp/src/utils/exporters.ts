@@ -4,7 +4,6 @@ import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
 import { exportProjectData } from '@/db/db'
 import { LESION_TYPES, SITUATIONS, ORIENTATIONS, URGENCY_LEVELS } from '@/types'
-import type { Project, Zone, Lesion } from '@/types'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -15,6 +14,9 @@ function safeName(s: string): string {
 function typeName(code: string): string {
   return LESION_TYPES.find(t => t.code === code)?.name ?? code
 }
+function typeColor(code: string): string {
+  return LESION_TYPES.find(t => t.code === code)?.color ?? '#888'
+}
 function sitName(code: string): string {
   return SITUATIONS.find(s => s.code === code)?.name ?? code
 }
@@ -24,6 +26,18 @@ function oriName(code: string | null): string {
 }
 function urgName(code: string): string {
   return URGENCY_LEVELS.find(u => u.code === code)?.name ?? code
+}
+function urgColor(code: string): string {
+  return URGENCY_LEVELS.find(u => u.code === code)?.color ?? '#888'
+}
+
+/** Hex color (#RRGGBB) → [r, g, b] */
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return [r, g, b]
 }
 
 // ─── XLSX Export ────────────────────────────────────────────────────────────
@@ -102,7 +116,6 @@ export async function exportJSON(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
-  // Exclude large photo DataURLs from JSON to keep it manageable
   const exportData = {
     ...data,
     photos: data.photos.map(p => ({ ...p, dataUrl: '[OMITTED — use ZIP export for photos]' })),
@@ -112,114 +125,306 @@ export async function exportJSON(projectId: string): Promise<void> {
 }
 
 // ─── PDF Report ─────────────────────────────────────────────────────────────
+// Genera portada + listado + UNA FICHA POR LESIÓN con foto si la hay
 
 export async function exportPDF(projectId: string): Promise<void> {
   const data = await exportProjectData(projectId)
   if (!data.project) return
 
   const p = data.project
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-  const W = doc.internal.pageSize.getWidth()
-  const H = doc.internal.pageSize.getHeight()
+  const W = doc.internal.pageSize.getWidth()   // 210
+  const H = doc.internal.pageSize.getHeight()  // 297
 
-  // ── Cover page ──
-  doc.setFillColor(10, 22, 40) // #0A1628
-  doc.rect(0, 0, W, H, 'F')
+  // ── Palette (dark, matching the app) ──
+  const BG: [number, number, number]   = [9, 11, 17]
+  const S1: [number, number, number]   = [15, 21, 32]
+  const S2: [number, number, number]   = [21, 30, 46]
+  const BD: [number, number, number]   = [31, 48, 80]
+  const ACC: [number, number, number]  = [37, 99, 235]
+  const TX: [number, number, number]   = [221, 225, 236]
+  const T2: [number, number, number]   = [123, 144, 181]
+  const T3: [number, number, number]   = [63, 80, 112]
 
-  // Brand bar
-  doc.setFillColor(37, 99, 235) // #2563EB
-  doc.rect(0, 0, W, 8, 'F')
+  const fillBg = () => { doc.setFillColor(...BG); doc.rect(0, 0, W, H, 'F') }
 
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(10)
-  doc.text('SOCOTEC Engineering Solutions', 15, 25)
+  // ── Helper: add header stripe on every page ──
+  const addPageHeader = (title: string) => {
+    doc.setFillColor(...ACC)
+    doc.rect(0, 0, W, 8, 'F')
+    doc.setTextColor(...TX)
+    doc.setFontSize(7.5)
+    doc.text('SOCOTEC InspecApp', 7, 5.5)
+    doc.text(title, W - 7, 5.5, { align: 'right' })
+  }
 
-  doc.setFontSize(28)
-  doc.text('Informe de Inspeccion', 15, 50)
+  // ── PORTADA ──────────────────────────────────────────────────
+
+  fillBg()
+  addPageHeader('Informe de Inspeccion')
+
+  // Big brand bar
+  doc.setFillColor(...ACC)
+  doc.rect(0, 20, 6, 60, 'F')
+
+  doc.setTextColor(...TX)
+  doc.setFontSize(22)
+  doc.text('Informe de Inspeccion', 14, 42)
 
   doc.setFontSize(14)
-  doc.setTextColor(139, 163, 199) // #8BA3C7
-  doc.text(p.name, 15, 65)
+  doc.setTextColor(...T2)
+  doc.text(p.name, 14, 54)
 
-  doc.setFontSize(11)
-  const info = [
-    `Codigo de obra: ${p.workCode}`,
-    `Direccion: ${p.address}`,
-    `Inspector: ${p.inspector}`,
-    `Fecha: ${p.inspectionDate}`,
-    `Zonas: ${data.zones.length}`,
-    `Lesiones: ${data.lesions.length}`,
-    `Fotos: ${data.photos.length}`,
+  // Info grid
+  doc.setFillColor(...S1)
+  doc.rect(14, 65, W - 28, 52, 'F')
+  doc.setDrawColor(...BD)
+  doc.setLineWidth(0.3)
+  doc.rect(14, 65, W - 28, 52)
+
+  const infoItems = [
+    ['Codigo de obra', p.workCode],
+    ['Direccion', p.address],
+    ['Inspector', p.inspector],
+    ['Fecha de inspeccion', p.inspectionDate],
+    ['Zonas inspeccionadas', String(data.zones.length)],
+    ['Total de lesiones', String(data.lesions.length)],
+    ['Lesiones urgentes', String(data.lesions.filter(l => l.urgency === 'U').length)],
+    ['Fotografias adjuntas', String(data.photos.length)],
   ]
-  info.forEach((line, i) => {
-    doc.text(line, 15, 85 + i * 8)
+  infoItems.forEach(([label, value], i) => {
+    const row = Math.floor(i / 2)
+    const col = i % 2
+    const x = 20 + col * (W / 2 - 14)
+    const y = 74 + row * 10
+    doc.setFontSize(8)
+    doc.setTextColor(...T3)
+    doc.text(label, x, y)
+    doc.setFontSize(9.5)
+    doc.setTextColor(...TX)
+    doc.text(value || '—', x, y + 5)
   })
 
-  // ── Lesion table pages ──
-  if (data.lesions.length > 0) {
+  // Building description
+  if (p.description) {
+    doc.setFillColor(...S2)
+    doc.rect(14, 125, W - 28, 35, 'F')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...T3)
+    doc.text('DESCRIPCION DEL EDIFICIO', 18, 133)
+    doc.setFontSize(9)
+    doc.setTextColor(...T2)
+    const lines = doc.splitTextToSize(p.description, W - 36)
+    doc.text(lines.slice(0, 3), 18, 140)
+  }
+
+  // Footer
+  doc.setFontSize(7)
+  doc.setTextColor(...T3)
+  doc.text(`Generado ${new Date().toLocaleDateString('es-ES')} — SOCOTEC InspecApp`, W / 2, H - 10, { align: 'center' })
+
+  // ── RESUMEN POR ZONA ─────────────────────────────────────────
+
+  if (data.zones.length > 0) {
     doc.addPage()
-    doc.setFillColor(10, 22, 40)
-    doc.rect(0, 0, W, H, 'F')
-    doc.setFillColor(37, 99, 235)
-    doc.rect(0, 0, W, 6, 'F')
+    fillBg()
+    addPageHeader('Resumen por zona')
 
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(16)
-    doc.text('Listado de Lesiones', 15, 20)
-
-    const cols = ['Codigo', 'Tipo', 'Zona', 'Sit.', 'Ori.', 'Urg.', 'Observaciones']
-    const colX = [15, 40, 80, 140, 165, 190, 215]
-    const colW = [25, 40, 55, 25, 25, 25, W - 230]
+    doc.setTextColor(...TX)
+    doc.setFontSize(14)
+    doc.text('Resumen por zona', 14, 22)
 
     let y = 32
-
-    // Header
-    doc.setFontSize(8)
-    doc.setTextColor(139, 163, 199)
-    cols.forEach((c, i) => doc.text(c, colX[i], y))
-    y += 5
-    doc.setDrawColor(30, 58, 95)
-    doc.line(15, y, W - 15, y)
-    y += 4
-
-    doc.setTextColor(232, 237, 245) // #E8EDF5
-    doc.setFontSize(8)
-
     data.zones.forEach(z => {
       const zLesions = data.lesions.filter(l => l.zoneId === z.id)
-      zLesions.forEach(l => {
-        if (y > H - 15) {
-          doc.addPage()
-          doc.setFillColor(10, 22, 40)
-          doc.rect(0, 0, W, H, 'F')
-          doc.setFillColor(37, 99, 235)
-          doc.rect(0, 0, W, 6, 'F')
-          y = 18
-          doc.setTextColor(139, 163, 199)
-          cols.forEach((c, i) => doc.text(c, colX[i], y))
-          y += 5
-          doc.setDrawColor(30, 58, 95)
-          doc.line(15, y, W - 15, y)
-          y += 4
-          doc.setTextColor(232, 237, 245)
-        }
+      const urgZ = zLesions.filter(l => l.urgency === 'U').length
 
-        const row = [
-          l.code,
-          typeName(l.tipus),
-          z.name.slice(0, 20),
-          sitName(l.sit),
-          oriName(l.ori),
-          urgName(l.urgency),
-          (l.obs || '').slice(0, 50),
-        ]
-        row.forEach((v, i) => {
-          doc.text(v, colX[i], y, { maxWidth: colW[i] })
-        })
+      if (y > H - 30) {
+        doc.addPage(); fillBg(); addPageHeader('Resumen por zona')
+        y = 20
+      }
+
+      // Zone header
+      doc.setFillColor(...S1)
+      doc.rect(14, y, W - 28, 10, 'F')
+      doc.setFontSize(9)
+      doc.setTextColor(...TX)
+      doc.text(z.name, 18, y + 6.5)
+      doc.setFontSize(8)
+      doc.setTextColor(...T2)
+      doc.text(`${zLesions.length} lesiones`, W - 18, y + 6.5, { align: 'right' })
+      y += 12
+
+      if (urgZ > 0) {
+        doc.setFontSize(7.5)
+        doc.setTextColor(239, 68, 68)
+        doc.text(`⚠ ${urgZ} urgentes`, 18, y)
+        y += 5
+      }
+
+      // Lesion mini-rows
+      zLesions.forEach(l => {
+        if (y > H - 12) {
+          doc.addPage(); fillBg(); addPageHeader('Resumen por zona')
+          y = 20
+        }
+        const uc = urgColor(l.urgency)
+        const tc = typeColor(l.tipus)
+        const [tr, tg, tb] = hexToRgb(tc)
+        doc.setFillColor(tr, tg, tb, 0.15 as number)
+        doc.rect(18, y - 2, 3, 3, 'F')
+        doc.setFontSize(7.5)
+        doc.setTextColor(...TX)
+        doc.text(l.code, 24, y + 0.5)
+        doc.setTextColor(...T2)
+        const obs = (l.obs || typeName(l.tipus)).slice(0, 65)
+        doc.text(obs, 45, y + 0.5)
+        const [ur, ug, ub] = hexToRgb(uc)
+        doc.setTextColor(ur, ug, ub)
+        doc.text(urgName(l.urgency), W - 18, y + 0.5, { align: 'right' })
         y += 6
       })
+      y += 4
     })
+  }
+
+  // ── FICHAS POR LESIÓN ────────────────────────────────────────
+  // Una página A4 por lesión con todos los datos + foto si existe
+
+  for (const z of data.zones) {
+    const zLesions = data.lesions.filter(l => l.zoneId === z.id)
+
+    for (const l of zLesions) {
+      doc.addPage()
+      fillBg()
+      addPageHeader(`Ficha de lesion · ${l.code}`)
+
+      const tc = typeColor(l.tipus)
+      const uc = urgColor(l.urgency)
+      const [tcR, tcG, tcB] = hexToRgb(tc)
+      const [ucR, ucG, ucB] = hexToRgb(uc)
+
+      // ─ Franja de color del tipo en la izquierda ─
+      doc.setFillColor(tcR, tcG, tcB)
+      doc.rect(0, 8, 5, H - 8, 'F')
+
+      // ─ Cabecera de la ficha ─
+      doc.setFillColor(...S1)
+      doc.rect(8, 12, W - 16, 24, 'F')
+      doc.setDrawColor(tcR, tcG, tcB)
+      doc.setLineWidth(0.4)
+      doc.rect(8, 12, W - 16, 24)
+
+      doc.setFontSize(20)
+      doc.setTextColor(tcR, tcG, tcB)
+      doc.text(l.code, 14, 26)
+
+      doc.setFontSize(10)
+      doc.setTextColor(...T2)
+      doc.text(typeName(l.tipus), 14, 32)
+
+      // Urgency badge
+      doc.setFillColor(ucR, ucG, ucB)
+      doc.roundedRect(W - 45, 15, 35, 8, 1.5, 1.5, 'F')
+      doc.setFontSize(8)
+      doc.setTextColor(255, 255, 255)
+      doc.text(urgName(l.urgency).toUpperCase(), W - 27.5, 20.5, { align: 'center' })
+
+      // ─ Grid de datos ─
+      const dataItems = [
+        ['Zona', z.name],
+        ['Planta', z.floor || '—'],
+        ['Piso / Unidad', z.unit || '—'],
+        ['Situacion', sitName(l.sit)],
+        ['Orientacion', oriName(l.ori)],
+        ['Tipo', typeName(l.tipus)],
+        ['Codigo', l.code],
+        ['Fotos adjuntas', String(l.photoIds.length)],
+      ]
+
+      // Two-column grid
+      const gridTop = 44
+      const cellW = (W - 16) / 2 - 2
+      const cellH = 13
+
+      dataItems.forEach((item, i) => {
+        const col = i % 2
+        const row = Math.floor(i / 2)
+        const x = 8 + col * (cellW + 4)
+        const y = gridTop + row * (cellH + 2)
+
+        doc.setFillColor(...S2)
+        doc.rect(x, y, cellW, cellH, 'F')
+        doc.setDrawColor(...BD)
+        doc.setLineWidth(0.2)
+        doc.rect(x, y, cellW, cellH)
+
+        doc.setFontSize(6.5)
+        doc.setTextColor(...T3)
+        doc.text(item[0].toUpperCase(), x + 3, y + 4.5)
+        doc.setFontSize(9)
+        doc.setTextColor(...TX)
+        doc.text(item[1], x + 3, y + 10)
+      })
+
+      // ─ Observaciones ─
+      const obsTop = gridTop + 4 * (cellH + 2) + 4
+
+      doc.setFillColor(...S1)
+      const obsLines = doc.splitTextToSize(l.obs || 'Sin observaciones registradas.', W - 28)
+      const obsH = Math.max(20, obsLines.length * 5 + 12)
+      doc.rect(8, obsTop, W - 16, obsH, 'F')
+      doc.setDrawColor(...BD)
+      doc.setLineWidth(0.2)
+      doc.rect(8, obsTop, W - 16, obsH)
+
+      doc.setFontSize(7)
+      doc.setTextColor(...T3)
+      doc.text('OBSERVACIONES', 12, obsTop + 6)
+      doc.setFontSize(9.5)
+      doc.setTextColor(...T2)
+      doc.text(obsLines, 12, obsTop + 12)
+
+      // ─ Foto adjunta (si existe) ─
+      const photoTop = obsTop + obsH + 6
+      const lesionPhotos = data.photos.filter(ph => ph.lesionId === l.id)
+
+      if (lesionPhotos.length > 0) {
+        doc.setFontSize(7)
+        doc.setTextColor(...T3)
+        doc.text('FOTOGRAFIAS ADJUNTAS', 12, photoTop)
+
+        let photoX = 8
+        const photoY = photoTop + 3
+        const maxPhotoW = (W - 16 - (Math.min(lesionPhotos.length, 3) - 1) * 3) / Math.min(lesionPhotos.length, 3)
+        const maxPhotoH = Math.min(H - photoY - 16, 70)
+
+        for (const ph of lesionPhotos.slice(0, 3)) {
+          try {
+            // dataUrl is "data:image/jpeg;base64,..."
+            const match = ph.dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+            if (match) {
+              const format = match[1].split('/')[1]?.toUpperCase() ?? 'JPEG'
+              const supportedFormats = ['JPEG', 'JPG', 'PNG', 'WEBP']
+              const safeFormat = supportedFormats.includes(format) ? format : 'JPEG'
+              doc.addImage(ph.dataUrl, safeFormat as 'JPEG' | 'PNG', photoX, photoY, maxPhotoW, maxPhotoH, undefined, 'MEDIUM')
+            }
+          } catch {
+            // Skip photo if it can't be embedded
+          }
+          photoX += maxPhotoW + 3
+        }
+      }
+
+      // ─ Footer de ficha ─
+      doc.setFontSize(6.5)
+      doc.setTextColor(...T3)
+      doc.text(
+        `${p.name} · ${p.workCode}  |  ${z.name}  |  Ficha ${l.code}`,
+        W / 2, H - 8, { align: 'center' },
+      )
+    }
   }
 
   doc.save(`${safeName(p.name)}_${p.workCode || 'informe'}.pdf`)

@@ -6,7 +6,6 @@ import { LesionPanel } from '@/features/inspection/LesionPanel'
 import { StatsPanel } from '@/features/inspection/StatsPanel'
 import { ExportModal } from '@/features/inspection/ExportModal'
 import { SketchCanvas, type CanvasTool } from '@/features/inspection/canvas/SketchCanvas'
-import { Button } from '@/components/Button'
 import type { Lesion } from '@/types'
 
 interface ProjectViewProps {
@@ -35,51 +34,57 @@ export function ProjectView({ onBack }: ProjectViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* ── Top bar corporativa ─────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-4 py-2.5 bg-s1 border-b border-border shrink-0">
-        <Button variant="ghost" size="sm" onClick={onBack}>← Inicio</Button>
-        <div className="w-px h-5 bg-border" />
+      <div className="flex items-center gap-3 px-4 py-3 bg-s1 border-b border-border shrink-0">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius)] text-[12px] font-semibold text-t2 border border-border hover:bg-s2 hover:text-text hover:border-border2 transition-all shrink-0"
+        >
+          ← Inicio
+        </button>
+        <div className="w-px h-6 bg-border shrink-0" />
 
-        {/* Logo + Info proyecto */}
+        {/* Info proyecto */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-8 h-8 bg-accent rounded-[var(--radius)] flex items-center justify-center shrink-0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
             </svg>
           </div>
           <div className="min-w-0">
-            <div className="font-title text-[15px] font-extrabold leading-tight truncate">
-              {project.name}
-            </div>
+            <div className="font-title text-[15px] font-extrabold leading-tight truncate">{project.name}</div>
             <div className="text-[11px] text-t2 truncate">
-              {project.address} &middot; <span className="font-mono">{project.workCode}</span>
+              {project.address} &middot; <span className="font-mono text-t3">{project.workCode}</span>
             </div>
           </div>
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {urgentCount > 0 && (
-            <span className="inline-flex items-center px-[7px] py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-danger/[.15] text-danger">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold tracking-wide uppercase bg-danger/[.15] text-danger border border-danger/20">
               ⚠ {urgentCount} urgentes
             </span>
           )}
-          <Button
-            variant={view === 'croquis' ? 'accent' : 'ghost'}
-            size="sm"
-            onClick={() => setView('croquis')}
+          <div className="flex bg-s2 border border-border rounded-[var(--radius)] p-0.5 gap-0.5">
+            <button
+              onClick={() => setView('croquis')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold transition-all ${view === 'croquis' ? 'bg-accent text-white' : 'text-t2 hover:text-text'}`}
+            >
+              🗺 Croquis
+            </button>
+            <button
+              onClick={() => setView('stats')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold transition-all ${view === 'stats' ? 'bg-accent text-white' : 'text-t2 hover:text-text'}`}
+            >
+              📊 Stats
+            </button>
+          </div>
+          <button
+            onClick={() => setShowExport(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius)] text-[12px] font-semibold text-t2 border border-border hover:bg-s2 hover:text-text hover:border-border2 transition-all"
           >
-            🗺 Croquis
-          </Button>
-          <Button
-            variant={view === 'stats' ? 'accent' : 'ghost'}
-            size="sm"
-            onClick={() => setView('stats')}
-          >
-            📊 Stats
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowExport(true)}>
             📤 Exportar
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -88,12 +93,26 @@ export function ProjectView({ onBack }: ProjectViewProps) {
       ) : (
         <>
           {/* ── Pestanas de zonas ──────────────────────────────────── */}
-          <ZoneTabs
-            zones={zones}
-            activeZoneId={activeZoneId}
-            onSelect={setActiveZone}
-            onAdd={() => setShowNewZone(true)}
-          />
+          <div className="flex gap-0.5 overflow-x-auto px-3 pt-2 bg-s1 border-b border-border shrink-0 scrollbar-none">
+            {zones.map(z => {
+              const urgZ = lesions.filter(l => l.zoneId === z.id && l.urgency === 'U').length
+              return (
+                <button
+                  key={z.id}
+                  onClick={() => setActiveZone(z.id)}
+                  className={`zone-tab ${z.id === activeZoneId ? 'active' : ''}`}
+                >
+                  {z.name}
+                  {urgZ > 0 && (
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-white text-[8px] font-bold leading-none">
+                      {urgZ}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+            <button onClick={() => setShowNewZone(true)} className="zone-tab-add">＋</button>
+          </div>
 
           {/* ── Contenido de la zona ───────────────────────────────── */}
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -105,15 +124,25 @@ export function ProjectView({ onBack }: ProjectViewProps) {
                 selectedLesionId={selectedLesionId}
                 onSelectLesion={setSelectedLesionId}
                 onEditLesion={(l) => setLesionModal({ open: true, lesion: l })}
-                onAddLesion={() => { setTool('lesion') }}
+                onAddLesion={() => setTool('lesion')}
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center flex-col gap-3 text-t3">
-                <span className="text-5xl">🗺</span>
-                <div className="text-[15px] font-semibold text-t2">Ninguna zona creada</div>
-                <Button variant="accent" onClick={() => setShowNewZone(true)}>
+              <div className="flex-1 flex items-center justify-center flex-col gap-4 text-t3">
+                <div className="w-16 h-16 bg-s2 border border-border rounded-[var(--radius-lg)] flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <div className="text-[15px] font-semibold text-t2 mb-1">Ninguna zona creada</div>
+                  <div className="text-[12px] text-t3">Agrega zonas para organizar la inspeccion</div>
+                </div>
+                <button
+                  onClick={() => setShowNewZone(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius)] bg-accent text-white text-sm font-semibold hover:bg-accent-h transition-all"
+                >
                   + Agregar primera zona
-                </Button>
+                </button>
               </div>
             )}
           </div>
@@ -131,45 +160,7 @@ export function ProjectView({ onBack }: ProjectViewProps) {
   )
 }
 
-// ─── Sub-componentes ──────────────────────────────────────────────────────────
-
-function ZoneTabs({
-  zones,
-  activeZoneId,
-  onSelect,
-  onAdd,
-}: {
-  zones: { id: string; name: string; }[]
-  activeZoneId: string | null
-  onSelect: (id: string) => Promise<void>
-  onAdd: () => void
-}) {
-  return (
-    <div className="flex gap-0.5 overflow-x-auto px-3 pt-2 bg-s1 border-b border-border shrink-0 scrollbar-none">
-      {zones.map(z => (
-        <button
-          key={z.id}
-          onClick={() => onSelect(z.id)}
-          className={`
-            px-3.5 py-2 pb-[9px] rounded-t-md text-xs font-semibold cursor-pointer
-            border border-b-0 whitespace-nowrap transition-all duration-150 relative top-px select-none
-            ${z.id === activeZoneId
-              ? 'bg-bg text-text border-border'
-              : 'bg-s2 text-t2 border-border hover:bg-s3 hover:text-text'}
-          `}
-        >
-          {z.name}
-        </button>
-      ))}
-      <button
-        onClick={onAdd}
-        className="px-2.5 py-2 rounded-t-md text-base cursor-pointer border border-dashed border-b-0 border-border bg-transparent text-t3 relative top-px transition-all duration-150 hover:text-accent hover:border-accent hover:bg-accent-d leading-none"
-      >
-        ＋
-      </button>
-    </div>
-  )
-}
+// ─── Zone content ─────────────────────────────────────────────────────────────
 
 function ZoneContent({
   zone,
@@ -197,34 +188,36 @@ function ZoneContent({
     { key: 'lesion', icon: '📍', label: 'Lesion' },
   ]
 
+  const urgentCount = lesions.filter(l => l.urgency === 'U').length
+
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Panel izquierdo: Canvas */}
       <div className="flex flex-col flex-[0_0_62%] overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-s1 border-b border-border shrink-0">
-          <div className="flex gap-1">
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-s1 border-b border-border shrink-0">
+          <div className="flex gap-1.5">
             {tools.map(tb => (
               <button
                 key={tb.key}
                 onClick={() => setTool(tb.key)}
-                className={`
-                  flex flex-col items-center gap-0.5 py-[6px] px-2.5 rounded-[var(--radius)]
-                  cursor-pointer text-[10px] font-bold tracking-wider transition-all min-w-[52px] border
-                  ${tool === tb.key
-                    ? 'bg-accent-d text-accent border-accent'
-                    : 'bg-transparent text-t2 border-border hover:bg-s3 hover:border-border2 hover:text-text'}
-                `}
+                className={`tool-btn ${tool === tb.key ? 'active' : ''}`}
               >
-                <span className="text-base leading-none">{tb.icon}</span>
+                <span className="tool-icon">{tb.icon}</span>
                 {tb.label}
               </button>
             ))}
           </div>
-          <div className="w-px h-7 bg-border" />
-          <div className="ml-auto flex items-center gap-3 text-[10px] text-t3 font-mono">
-            <span>{canvasElements.length} elementos</span>
-            <span>{lesions.length} lesiones</span>
+          <div className="w-px h-8 bg-border" />
+          <div className="flex items-center gap-3 text-[11px] font-mono">
+            <span className="text-t3">{canvasElements.length} elem.</span>
+            <span className="text-t3">{lesions.length} lesiones</span>
+            {urgentCount > 0 && <span className="text-danger font-bold">{urgentCount}U</span>}
+          </div>
+          <div className="text-[10px] text-t3 ml-auto hidden lg:block">
+            {tool === 'select' && 'Arrastra · Scroll para zoom'}
+            {tool === 'rect' && 'Arrastra para dibujar'}
+            {tool === 'lesion' && 'Clic para colocar lesion'}
           </div>
         </div>
 
@@ -235,13 +228,6 @@ function ZoneContent({
             selectedLesionId={selectedLesionId}
             onSelectLesion={onSelectLesion}
           />
-        </div>
-
-        {/* Barra inferior */}
-        <div className="px-3 py-1.5 bg-s1 border-t border-border text-[10px] text-t3 shrink-0">
-          {tool === 'select' && 'Arrastra para mover el croquis · Scroll para zoom · Clic en un pin para seleccionar'}
-          {tool === 'rect' && 'Arrastra para dibujar un rectangulo · Suelta para definir la etiqueta'}
-          {tool === 'lesion' && 'Haz clic en el croquis para colocar una nueva lesion'}
         </div>
       </div>
 
@@ -254,4 +240,9 @@ function ZoneContent({
       />
     </div>
   )
+}
+
+
+interface ProjectViewProps {
+  onBack: () => void
 }

@@ -22,10 +22,16 @@ interface DrawState {
 }
 
 interface PendingPin {
-  /** Canvas coordinates (virtual) */
   cx: number; cy: number
-  /** Screen coordinates relative to container */
   sx: number; sy: number
+}
+
+// Overlay para nombrar un nuevo rectángulo sin usar window.prompt
+interface PendingRect {
+  norm: { x: number; y: number; w: number; h: number }
+  // posición del input en pantalla (relativa al container)
+  sx: number; sy: number
+  label: string
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -46,6 +52,7 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [draw, setDraw] = useState<DrawState | null>(null)
   const [pending, setPending] = useState<PendingPin | null>(null)
+  const [pendingRect, setPendingRect] = useState<PendingRect | null>(null)
 
   // Store
   const elements = useProjectStore(s => s.canvasElements)
@@ -180,9 +187,13 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
           w: Math.abs(draw.w),
           h: Math.abs(draw.h),
         }
-        const label = window.prompt('Etiqueta (ej: H1, Sala, Comedor...):') || ''
-        if (zoneId) {
-          upsert({ id: newId(), zoneId, ...norm, label })
+        // Calculate center in screen coords for the overlay input
+        const stage = stageRef.current
+        if (stage && zoneId) {
+          const centerCanvas = { x: norm.x + norm.w / 2, y: norm.y + norm.h / 2 }
+          const sx = centerCanvas.x * scale + stage.x()
+          const sy = centerCanvas.y * scale + stage.y()
+          setPendingRect({ norm, sx, sy, label: '' })
         }
       }
       setDraw(null)
@@ -206,6 +217,14 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
       }
     }
   }, [tool, draw, toCanvas, zoneId, upsert, onSelectLesion])
+
+  // ─── Confirm rect label ──────────────────────────────────────────────────
+
+  const confirmRect = useCallback(() => {
+    if (!pendingRect || !zoneId) return
+    upsert({ id: newId(), zoneId, ...pendingRect.norm, label: pendingRect.label.trim() })
+    setPendingRect(null)
+  }, [pendingRect, zoneId, upsert])
 
   // ─── Create lesion from QuickTypePicker ─────────────────────────────────
 
@@ -344,6 +363,50 @@ export function SketchCanvas({ tool, selectedLesionId, onSelectLesion }: Props) 
           onSelect={onTypeSelected}
           onCancel={() => setPending(null)}
         />
+      )}
+
+      {/* ── Label input overlay (para nombrar rectángulos) ────── */}
+      {pendingRect && (
+        <div
+          className="absolute z-20 animate-fade-in"
+          style={{
+            left: Math.min(pendingRect.sx - 90, size.w - 210),
+            top: Math.min(pendingRect.sy - 20, size.h - 90),
+          }}
+        >
+          <div className="bg-s1 border border-border rounded-[var(--radius-md)] shadow-[0_12px_40px_rgba(0,0,0,.7)] p-3.5 w-[210px]">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2">
+              Etiqueta del elemento
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={pendingRect.label}
+              onChange={e => setPendingRect(r => r ? { ...r, label: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') confirmRect()
+                if (e.key === 'Escape') setPendingRect(null)
+              }}
+              placeholder="ej: Sala, H1, Cocina..."
+              className="w-full bg-s2 border border-border rounded-[var(--radius)] text-[13px] text-text px-2.5 py-1.5 outline-none focus:border-accent transition-colors mb-2.5"
+              style={{ fontFamily: 'var(--font-sans)' }}
+            />
+            <div className="flex gap-1.5">
+              <button
+                onClick={confirmRect}
+                className="flex-1 bg-accent text-white text-[12px] font-semibold py-1.5 rounded-[var(--radius)] hover:bg-accent-h transition-colors"
+              >
+                Agregar
+              </button>
+              <button
+                onClick={() => setPendingRect(null)}
+                className="px-3 text-t2 text-[12px] border border-border rounded-[var(--radius)] hover:bg-s2 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Zoom indicator ────────────────────────────────────── */}

@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* ─── Design tokens — Paleta corporativa SOCOTEC ────────────────────────────── */
 @theme {
   /* Fondos - Dark blue corporate */
-  --color-bg:        #0A1628;
-  --color-s1:        #0F1D35;
-  --color-s2:        #142544;
-  --color-s3:        #1A2D52;
-  --color-border:    #1E3A5F;
-  --color-border2:   #2A4A72;
+  --color-bg:        #090B11;
+  --color-s1:        #0F1520;
+  --color-s2:        #151E2E;
+  --color-s3:        #1C2740;
+  --color-border:    #1F3050;
+  --color-border2:   #2C4270;
 
   /* Acento SOCOTEC — Azul corporativo */
   --color-accent:    #2563EB;
@@ -17,9 +17,9 @@
   --color-accent-d:  rgba(37, 99, 235, 0.12);
 
   /* Texto */
-  --color-text:      #E8EDF5;
-  --color-t2:        #8BA3C7;
-  --color-t3:        #4A6B8A;
+  --color-text:      #DDE1EC;
+  --color-t2:        #7B90B5;
+  --color-t3:        #3F5070;
 
   /* Semanticos */
   --color-ok:        #22C55E;
@@ -31,7 +31,7 @@
   /* Tipografia */
   --font-sans:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono:  'IBM Plex Mono', ui-monospace, monospace;
-  --font-title: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-title: 'Syne', ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* Radios */
   --radius-sm: 4px;
@@ -74,15 +74,124 @@ html, body, #root {
 }
 
 /* ─── Utilidades tipograficas ───────────────────────────────────────────────── */
-.font-title { font-family: var(--font-title); font-weight: 700; }
+.font-title { font-family: var(--font-title); font-weight: 800; letter-spacing: -0.01em; }
 .font-mono  { font-family: var(--font-mono); }
+
+/* ─── Label estándar ───────────────────────────────────────────────────────── */
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-t2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+/* ─── Tool button (toolbar) ─────────────────────────────────────────────────── */
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-t2);
+  transition: all 0.15s;
+  min-width: 58px;
+  line-height: 1.2;
+}
+.tool-btn:hover { background: var(--color-s3); border-color: var(--color-border2); color: var(--color-text); }
+.tool-btn.active { background: var(--color-accent-d); border-color: var(--color-accent); color: var(--color-accent); }
+.tool-btn .tool-icon { font-size: 18px; line-height: 1; }
+
+/* ─── Zone tabs ─────────────────────────────────────────────────────────────── */
+.zone-tab {
+  padding: 9px 16px 10px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  background: var(--color-s2);
+  color: var(--color-t2);
+  white-space: nowrap;
+  transition: all 0.15s;
+  position: relative;
+  top: 1px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.zone-tab:hover { background: var(--color-s3); color: var(--color-text); }
+.zone-tab.active { background: var(--color-bg); color: var(--color-text); border-color: var(--color-border); border-bottom-color: var(--color-bg); }
+.zone-tab-add {
+  padding: 9px 12px;
+  border-radius: 6px 6px 0 0;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px dashed var(--color-border);
+  border-bottom: none;
+  background: transparent;
+  color: var(--color-t3);
+  position: relative;
+  top: 1px;
+  transition: all 0.15s;
+}
+.zone-tab-add:hover { color: var(--color-accent); border-color: var(--color-accent); background: var(--color-accent-d); }
+
+/* ─── Lesion list item ──────────────────────────────────────────────────────── */
+.lesion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.lesion-item:hover { background: var(--color-s2); border-color: var(--color-border); }
+.lesion-item.selected { background: var(--color-accent-d); border-color: rgba(37,99,235,0.35); }
+
+/* ─── Project card ──────────────────────────────────────────────────────────── */
+.proj-card {
+  background: var(--color-s1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.proj-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.proj-card:hover { border-color: var(--color-accent); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.proj-card:hover::before { opacity: 1; }
 
 /* ─── Animacion de entrada ──────────────────────────────────────────────────── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-.animate-fade-in { animation: fade-in-up 0.2s ease forwards; }
+.animate-fade-in { animation: fade-in-up 0.18s ease forwards; }
 
 /* ─── Scrollbar oculta para tabs ────────────────────────────────────────────── */
 .scrollbar-none { scrollbar-width: none; }
